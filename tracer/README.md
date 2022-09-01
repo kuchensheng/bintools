@@ -31,13 +31,14 @@ var Conf = &ServiceConf{
 "github.com/isyscore/isc-gobase/tracer/conf"
 "github.com/isyscore/isc-gobase/tracer/push"
 func testReq(req *http.Request)  {
-	//开启客户端跟踪
+	//开启服务端跟踪
     serverTracer := NewServerTracer(req)
     println("服务端其他业务请求")
     
     for i := 0; i < 3; i++ {
         println("作为客户端，向其他服务发起请求")
 		req1 := &http.Request{}
+		//开启客户端跟踪
         clientTracer := serverTracer.NewClientTracer(req1)
 		println("req1请求处理以及其他业务处理")
 		//结束当前客户端请求跟踪
@@ -47,4 +48,34 @@ func testReq(req *http.Request)  {
     serverTracer.EndTrace(OK, "i am not in danger")
 }
 ```
+## 上报的内容格式
+```text
+0|default|1662021286867|000100000182f8303bcd0a0070c54e68|1.1|1|1|<GET>http://localhost:8080?id=23|default|10.0.112.197|192.168.10.97|0|0|3|i am not in danger|[{"name":"isyscoreOS","in":"query"},{"name":"id","in":"query"},{"name":"isyscoreOS","in":"form"}]
+0|default|1662021286867|000100000182f8303bcd0a0070c54e68|1.1.1|0|1|<GET>http://localhost:8080?id=23|default|10.0.112.197|192.168.10.97|0|0|0|i am danger|[{"name":"isyscoreOS","in":"query"},{"name":"id","in":"query"},{"name":"isyscoreOS","in":"form"}]
+0|default|1662021286870|000100000182f8303bcd0a0070c54e68|1.1.2|0|1|<GET>http://localhost:8080?id=23|default|10.0.112.197|192.168.10.97|0|0|0|i am danger|[{"name":"isyscoreOS","in":"query"},{"name":"id","in":"query"},{"name":"isyscoreOS","in":"form"}]
+0|default|1662021286870|000100000182f8303bcd0a0070c54e68|1.1.3|0|1|<GET>http://localhost:8080?id=23|default|10.0.112.197|192.168.10.97|0|0|0|i am danger|[{"name":"isyscoreOS","in":"query"},{"name":"id","in":"query"},{"name":"isyscoreOS","in":"form"}]
+```
+字段释义
+
+ | 字段             | 描述                                          | 
+|----------------|---------------------------------------------|
+ | version        | 记录日志版本号，用于日志格式解析，默认：0                       |
+ | profilesActive | 环境,固定值default                               |
+| startTime      | 该日志的开始记录时间                                  |
+| traceId        | 跟踪ID，在整条链路上传递                               |
+| rpcId          | spanId，标识调用广度及深度                            | 
+ | endpoint       | 表示日志打印端，1-服务端,0-客户端                         |
+| version        | 日志格式版本，固定值”1“                               |
+| traceName      | 跟踪名称，http类型的接口<Method>URI                   |
+| traceType      | 跟踪类型，HTTP=1                                 |
+| appName        | 当前endpoint的应用名称,如果没有，则默认default             |
+| localIp        | 当前endpoint的IP地址                             |
+| remoteIp       | 发起rpc的远端IP地址                                |
+| status         | 本次跟踪的结果，0-成功，1-失败                           |
+| size           | 本次请求跟踪请求的大小                                 |
+| span           | 结束跟踪时计算从startTime到当前的时间差，即为本次跟踪的耗时          |
+| message        | 结束跟踪时记录的简单信息，如OK，Exception等等，便于快速了解问题出在什么地方 |
+| attrMap        | 本次请求的请求入参                                   |
+
 # 数据如何上报？
+见下回分解

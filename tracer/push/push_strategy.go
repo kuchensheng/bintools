@@ -21,6 +21,7 @@ type jsonMessage struct {
 type SendStrategy interface {
 	AddStream(messages []Message)
 	AddStreamWithLabels(labels map[string]string, messages []Message)
+	Query(queryString string) ([]Message, error)
 }
 
 func GetStrategy() SendStrategy {

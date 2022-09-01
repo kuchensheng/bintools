@@ -22,3 +22,7 @@ func (client *LocalStore) AddStreamWithLabels(labels map[string]string, messages
 	}
 	println("add message to stream channel success")
 }
+
+func (client *LocalStore) Query(queryString string) ([]Message, error) {
+	return nil, nil
+}

@@ -71,7 +71,7 @@ type parameter struct {
 	//In 参数位置
 	In string `json:"in"`
 	//参数值，如果是文件，则只显示文件名
-	value []string `json:"value"`
+	Value []string `json:"Value"`
 }
 
 type ServerTracer struct {
@@ -146,6 +146,7 @@ func (server *ServerTracer) NewClientTracer(req *http.Request) *ClientTracer {
 	}
 
 	clientTracer := &ClientTracer{NewWithRpcId(req, rpcId)}
+	clientTracer.TracId = server.TracId
 	clientTracer.Endpoint = CLIENT
 	server.clientRpcId = rpcId
 	return clientTracer
@@ -170,6 +171,11 @@ func New(req *http.Request) *Tracer {
 			uri = url.String()
 		}
 	}
+	strLength := req.Header.Get("Content-Length")
+	if strLength == "" {
+		strLength = "0"
+	}
+	length, _ := strconv.Atoi(strLength)
 	return &Tracer{
 		TracId:      getOrCreateTraceId(req),
 		sampled:     true,
@@ -180,6 +186,7 @@ func New(req *http.Request) *Tracer {
 		RemoteIp:    req.RemoteAddr,
 		TraceName:   fmt.Sprintf("<%s>%s", method, uri),
 		AttrMap:     parametersCollector(req),
+		Size:        length,
 	}
 }
 
@@ -289,14 +296,14 @@ func parametersCollector(req *http.Request) []parameter {
 		parameters = append(parameters, parameter{
 			Name:  s,
 			In:    "query",
-			value: strings,
+			Value: strings,
 		})
 	}
 	for s, strings := range cloneRequest.PostForm {
 		parameters = append(parameters, parameter{
 			Name:  s,
 			In:    "form",
-			value: strings,
+			Value: strings,
 		})
 	}
 	if multipartForms := cloneRequest.MultipartForm; multipartForms != nil {
@@ -304,14 +311,14 @@ func parametersCollector(req *http.Request) []parameter {
 			parameters = append(parameters, parameter{
 				Name:  s,
 				In:    "multiform",
-				value: strings,
+				Value: strings,
 			})
 		}
 		for s, headers := range multipartForms.File {
 			parameters = append(parameters, parameter{
 				Name: s,
 				In:   "multiform",
-				value: func(hs []*multipart.FileHeader) []string {
+				Value: func(hs []*multipart.FileHeader) []string {
 					var fileNames []string
 					for _, h := range hs {
 						fileNames = append(fileNames, h.Filename)
@@ -326,7 +333,7 @@ func parametersCollector(req *http.Request) []parameter {
 		parameters = append(parameters, parameter{
 			Name:  cookie.Name,
 			In:    "cookie",
-			value: []string{cookie.Value},
+			Value: []string{cookie.Value},
 		})
 	}
 	if req.Body != nil {
@@ -336,7 +343,7 @@ func parametersCollector(req *http.Request) []parameter {
 			parameters = append(parameters, parameter{
 				Name:  "请求体",
 				In:    "body",
-				value: []string{string(data)},
+				Value: []string{string(data)},
 			})
 		}
 	}

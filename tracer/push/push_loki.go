@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/isyscore/isc-gobase/tracer/conf"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptrace"
 	"sync"
@@ -30,6 +31,18 @@ type LokiClient struct {
 	wait           sync.WaitGroup
 }
 
+type returnedJSON struct {
+	Status interface{}
+	Data   struct {
+		ResultType string
+		Result     []struct {
+			Stream interface{}
+			Values [][]string
+		}
+		Stats interface{}
+	}
+}
+
 func (client *LokiClient) AddStream(messages []Message) {
 	labels := make(map[string]string)
 	labels["job"] = "tracelogs"
@@ -50,6 +63,28 @@ func (client *LokiClient) AddStreamWithLabels(labels map[string]string, messages
 	}
 	client.streams <- stream
 	println("add message to stream channel success")
+}
+
+func (client *LokiClient) Query(queryString string) ([]Message, error) {
+	response, err := http.Get(client.url + client.endpoints.query + "?query=" + queryString)
+
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return []Message{}, err
+	}
+	var answer returnedJSON
+	json.Unmarshal(body, &answer)
+	var values []Message
+	for i := range answer.Data.Result {
+		for j := range answer.Data.Result[i].Values {
+			msg := Message{
+				Time:    answer.Data.Result[i].Values[j][0],
+				Message: answer.Data.Result[i].Values[j][1],
+			}
+			values = append(values, msg)
+		}
+	}
+	return values, nil
 }
 
 var httpClient http.Client
