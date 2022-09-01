@@ -1,3 +1,3 @@
-module github.com/isyscore/isc-gobase/tracer
+module github.com/kuchensheng/bintools/tracer
 
 go 1.18
