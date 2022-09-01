@@ -7,7 +7,7 @@
 # 快速开始
 ## Install
 ```bash
-go get github.com/isyscore/isc-gobase/tracer
+go get github.com/kuchensheng/bintools/tracer
 ```
 ## Example
 ```go
