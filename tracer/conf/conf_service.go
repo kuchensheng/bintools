@@ -5,7 +5,7 @@ var Conf = &ServiceConf{
 	Using:       "loki",
 	Loki: lokiConf{
 		Host:        "http://loki-service:3100",
-		MaxBatch:    512,
+		MaxBatch:    64,
 		MaxWaitTime: 1,
 	},
 }

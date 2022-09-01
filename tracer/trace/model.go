@@ -65,7 +65,7 @@ const (
 )
 
 //请求入参
-type parameter struct {
+type Parameter struct {
 	//Name 参数名称
 	Name string `json:"name"`
 	//In 参数位置
@@ -113,7 +113,7 @@ type Tracer struct {
 	bizData map[string]interface{}
 	Ended   bool
 	//attrMap 请求参数
-	AttrMap []parameter
+	AttrMap []Parameter
 	//ServiceName 当前服务名称
 	ServiceName string
 }
@@ -126,7 +126,54 @@ func NewServerTracer(req *http.Request) *ServerTracer {
 	return serverTracer
 }
 
+//NewServerTracerWithoutReq 开启服务端跟踪,此用于服务端定时任务类请求
+func NewServerTracerWithoutReq() *ServerTracer {
+	tracer := &Tracer{
+		TracId:      LocalIdCreate.GenerateTraceId(),
+		sampled:     true,
+		ServiceName: conf.Conf.ServiceName,
+		startTime:   time.Now().UnixMilli(),
+		RpcId:       "0",
+		TraceType:   HTTP,
+		RemoteIp:    GetLocalIp(),
+		TraceName:   "<default>_server",
+	}
+	return &ServerTracer{tracer, ""}
+}
+
 var clientTracerLock sync.Mutex
+
+func (server *ServerTracer) NewClientWithHeader(header *http.Header) *ClientTracer {
+	clientTracerLock.Lock()
+	defer clientTracerLock.Unlock()
+	rpcId := server.clientRpcId
+	if rpcId == "" {
+		rpcId = server.RpcId
+		rpcId += ".1"
+	} else {
+		//获取最后一位 +1
+		splits := strings.Split(rpcId, ".")
+		lastOne, _ := strconv.Atoi(splits[len(splits)-1])
+		lastOne += 1
+		splits[len(splits)-1] = strconv.Itoa(lastOne)
+		rpcId = strings.Join(splits, ".")
+	}
+	server.clientRpcId = rpcId
+	//fixme TraceName和Size 需要手动写入
+	clientTracer := &ClientTracer{&Tracer{
+		TracId:      server.TracId,
+		sampled:     true,
+		ServiceName: conf.Conf.ServiceName,
+		startTime:   time.Now().UnixMilli(),
+		RpcId:       rpcId,
+		TraceType:   HTTP,
+		RemoteIp:    GetLocalIp(),
+		TraceName:   "<default>_default",
+	}}
+	header.Set(T_HEADER_TRACEID, server.TracId)
+	header.Set(T_HEADER_RPCID, rpcId)
+	return clientTracer
+}
 
 //NewClientTracer 开启客户端跟踪
 func (server *ServerTracer) NewClientTracer(req *http.Request) *ClientTracer {
@@ -287,20 +334,20 @@ func GetLocalIp() string {
 	return li.LocalIp
 }
 
-func parametersCollector(req *http.Request) []parameter {
+func parametersCollector(req *http.Request) []Parameter {
 	cloneRequest := req.Clone(context.TODO())
 	//读取请求参数
 	cloneRequest.ParseForm()
-	var parameters []parameter
+	var parameters []Parameter
 	for s, strings := range cloneRequest.Form {
-		parameters = append(parameters, parameter{
+		parameters = append(parameters, Parameter{
 			Name:  s,
 			In:    "query",
 			Value: strings,
 		})
 	}
 	for s, strings := range cloneRequest.PostForm {
-		parameters = append(parameters, parameter{
+		parameters = append(parameters, Parameter{
 			Name:  s,
 			In:    "form",
 			Value: strings,
@@ -308,14 +355,14 @@ func parametersCollector(req *http.Request) []parameter {
 	}
 	if multipartForms := cloneRequest.MultipartForm; multipartForms != nil {
 		for s, strings := range multipartForms.Value {
-			parameters = append(parameters, parameter{
+			parameters = append(parameters, Parameter{
 				Name:  s,
 				In:    "multiform",
 				Value: strings,
 			})
 		}
 		for s, headers := range multipartForms.File {
-			parameters = append(parameters, parameter{
+			parameters = append(parameters, Parameter{
 				Name: s,
 				In:   "multiform",
 				Value: func(hs []*multipart.FileHeader) []string {
@@ -330,7 +377,7 @@ func parametersCollector(req *http.Request) []parameter {
 	}
 
 	for _, cookie := range cloneRequest.Cookies() {
-		parameters = append(parameters, parameter{
+		parameters = append(parameters, Parameter{
 			Name:  cookie.Name,
 			In:    "cookie",
 			Value: []string{cookie.Value},
@@ -340,7 +387,7 @@ func parametersCollector(req *http.Request) []parameter {
 		if data, err := ioutil.ReadAll(req.Body); err != nil {
 			//do nothing
 		} else {
-			parameters = append(parameters, parameter{
+			parameters = append(parameters, Parameter{
 				Name:  "请求体",
 				In:    "body",
 				Value: []string{string(data)},

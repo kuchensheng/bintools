@@ -2,6 +2,7 @@ package trace
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/isyscore/isc-gobase/tracer/conf"
 	"net/http"
 	"net/url"
@@ -80,6 +81,7 @@ func TestTracer_EndTraceOk(t *testing.T) {
 			req:  requestArgs,
 		},
 	}
+	header := &http.Header{}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			conf.Conf.Loki.Host = "http://10.30.30.78:3100"
@@ -88,10 +90,18 @@ func TestTracer_EndTraceOk(t *testing.T) {
 			println("服务端其他业务请求")
 			println("向客户端发起请求")
 			for i := 0; i < 3; i++ {
-				clientTracer := serverTracer.NewClientTracer(tt.req)
+				//clientTracer := serverTracer.NewClientTracer(tt.req)
+				clientTracer := serverTracer.NewClientWithHeader(header)
+				clientTracer.TraceName = "自定义traceName，默认:<Method>uri"
+				clientTracer.AttrMap = []Parameter{}
+				println("真正的请求，dorequest")
+				//请求结束后，调用Endtrace
 				clientTracer.EndTrace(OK, "i am danger")
 			}
-			serverTracer.EndTrace(OK, "i am not in danger")
+			//服务端请求结束后，调用EndTrace()
+			//serverTracer.EndTrace(OK, "i am not in danger")
+			err := errors.New("我打江南走过，大哥，我错了")
+			serverTracer.EndTrace(ERROR, err.Error())
 			time.Sleep(2 * time.Second)
 		})
 	}
