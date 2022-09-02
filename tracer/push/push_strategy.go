@@ -1,6 +1,6 @@
 package push
 
-import "github.com/isyscore/isc-gobase/tracer/conf"
+import "github.com/kuchensheng/bintools/tracer/conf"
 
 type jsonValue [2]string
 

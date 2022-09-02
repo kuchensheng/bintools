@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/isyscore/isc-gobase/tracer/conf"
+	"github.com/kuchensheng/bintools/tracer/conf"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptrace"
