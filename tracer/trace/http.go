@@ -67,6 +67,21 @@ func SetHttpClient(httpClientOuter *http.Client) {
 	httpClient = httpClientOuter
 }
 
+func (server *ServerTracer) DoRequest(req *http.Request) (*http.Response, error) {
+	clientTracer := server.NewClientTracer(req)
+	resp, err := httpClient.Do(req)
+	defer func(response *http.Response, errorInfo error, tracer *ClientTracer) {
+		if err != nil {
+			tracer.EndTraceError(err)
+		} else if response.StatusCode > http.StatusIMUsed {
+			tracer.EndTrace(WARNING, "访问失败，响应码="+strconv.Itoa(response.StatusCode))
+		} else {
+			tracer.EndTraceOk()
+		}
+	}(resp, err, clientTracer)
+	return resp, err
+}
+
 // ------------------ get ------------------
 
 func (server *ServerTracer) GetSimple(url string) ([]byte, error) {

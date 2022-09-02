@@ -10,7 +10,7 @@
 go get github.com/kuchensheng/bintools/tracer
 ```
 ## Example
-```go
+
 //初始化配置信息
 var Conf = &ServiceConf{
 	//当前服务名
@@ -33,11 +33,17 @@ var Conf = &ServiceConf{
 func testReq(req *http.Request)  {
 	//开启服务端跟踪
     serverTracer := NewServerTracer(req)
+	//如果是定时任务，或其他自发性的请求，用以下方式开启服务端跟踪
+    //serverTracer1 := NewServerTracerWithoutReq()
     println("服务端其他业务请求")
     
     for i := 0; i < 3; i++ {
         println("作为客户端，向其他服务发起请求")
 		req1 := &http.Request{}
+		//clientTracer也支持仅有请求头的处理
+        //clientTracer := serverTracer.NewClientWithHeader(header)
+        //clientTracer.TraceName = "自定义traceName，默认:<Method>uri"
+        //clientTracer.AttrMap = []Parameter{}
 		//开启客户端跟踪
         clientTracer := serverTracer.NewClientTracer(req1)
 		println("req1请求处理以及其他业务处理")
@@ -47,6 +53,21 @@ func testReq(req *http.Request)  {
 	//结束服务端跟踪
     serverTracer.EndTrace(OK, "i am not in danger")
 }
+tracer模块也提供了http请求封装,这些请求都被serverTracer所包裹。
+分装包括了基本的GET|POST|PUT|DELETE请求
+示例如下
+```go
+req := &http.Request{}
+server := NewServerTracer(req)
+//如果是自发请求，无需req也可创建serverTracer
+//server := NewServerTracerWithoutReq()
+url := "www.baidu.com"
+header := map[string][]string{"id": {"kucs"}}
+parameter := map[string]string{"name":"库陈胜"}
+server.GetSimple("www.baidu.com")
+server.Get(url,header,parameter)
+//server所有业务完成后,结束处理
+server.EndTraceOK()
 ```
 ## 上报的内容格式
 ```text

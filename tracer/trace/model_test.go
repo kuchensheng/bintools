@@ -87,6 +87,7 @@ func TestTracer_EndTraceOk(t *testing.T) {
 			conf.Conf.Loki.Host = "http://10.30.30.78:3100"
 			conf.Conf.Loki.MaxWaitTime = 1
 			serverTracer := NewServerTracer(tt.req)
+			//serverTracer1 := NewServerTracerWithoutReq()
 			println("服务端其他业务请求")
 			println("向客户端发起请求")
 			for i := 0; i < 3; i++ {
