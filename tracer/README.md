@@ -10,7 +10,7 @@
 go get github.com/kuchensheng/bintools/tracer
 ```
 ## Example
-
+```go
 //初始化配置信息
 var Conf = &ServiceConf{
 	//当前服务名
@@ -41,6 +41,7 @@ func testReq(req *http.Request)  {
         println("作为客户端，向其他服务发起请求")
 		req1 := &http.Request{}
 		//clientTracer也支持仅有请求头的处理
+        // header := map[string][]string{"id": {"kucs"}}
         //clientTracer := serverTracer.NewClientWithHeader(header)
         //clientTracer.TraceName = "自定义traceName，默认:<Method>uri"
         //clientTracer.AttrMap = []Parameter{}
@@ -53,6 +54,8 @@ func testReq(req *http.Request)  {
 	//结束服务端跟踪
     serverTracer.EndTrace(OK, "i am not in danger")
 }
+```
+
 tracer模块也提供了http请求封装,这些请求都被serverTracer所包裹。
 分装包括了基本的GET|POST|PUT|DELETE请求
 示例如下
