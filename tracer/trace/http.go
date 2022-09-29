@@ -289,6 +289,10 @@ func (server *ServerTracer) PatchOfStandard(url string, header http.Header, para
 	return server.callToStandard(httpRequest, url)
 }
 
+func (server *ServerTracer) Call(r *http.Request) ([]byte, error) {
+	return server.call(r, r.URL.Path)
+}
+
 func (server *ServerTracer) call(httpRequest *http.Request, url string) ([]byte, error) {
 	//开始客户端跟踪
 	clientTracer := server.NewClientTracer(httpRequest)
