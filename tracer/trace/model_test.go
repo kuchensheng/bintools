@@ -3,49 +3,13 @@ package trace
 import (
 	"encoding/json"
 	"errors"
-	"github.com/kuchensheng/bintools/tracer/conf"
+	"github.com/isyscore/isc-gobase/tracer/conf"
 	"net/http"
 	"net/url"
 	"reflect"
 	"testing"
 	"time"
 )
-
-func TestNewServerTracerWithHttpServer(t *testing.T) {
-	handlerFunc := http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		//业务逻辑
-	})
-	http.Handle("/", handlerFunc)
-	svr := http.Server{
-		Addr: ":8080",
-		Handler: ServerTraceHandler(func(writer http.ResponseWriter, request *http.Request) {
-			//业务逻辑
-		}),
-	}
-	svr.ListenAndServe()
-}
-
-func TestNewServerTracer(t *testing.T) {
-	req := &http.Request{
-		Header: map[string][]string{"Content-Type": {"application/json"}, "token": {"i am authorization info"}},
-		URL: func() *url.URL {
-			url, _ := url.Parse("http://localhost:8080?id=23")
-			return url
-		}(),
-		Method: http.MethodGet,
-	}
-	//create a tracer of server
-	serverTracer := NewServerTracer(req)
-	//todo do business
-	t.Logf("业务处理中，请稍后……")
-	time.Sleep(time.Second * 2)
-	//end trace after done business.if it is OK,call serverTracer.EndTraceOK(),else call serverTracer.EndTracerError().or you can call serverTracer.EndTracer(OK,"this is message")
-	serverTracer.EndTraceOk()
-	//it is error
-	//serverTracer.EndTraceError(errors.New("there is error message"))
-	//it is other
-	//serverTracer.EndTrace(WARNING,"this is waring message")
-}
 
 func TestNew(t *testing.T) {
 	type args struct {
@@ -123,7 +87,6 @@ func TestTracer_EndTraceOk(t *testing.T) {
 			conf.Conf.Loki.Host = "http://10.30.30.78:3100"
 			conf.Conf.Loki.MaxWaitTime = 1
 			serverTracer := NewServerTracer(tt.req)
-			//serverTracer1 := NewServerTracerWithoutReq()
 			println("服务端其他业务请求")
 			println("向客户端发起请求")
 			for i := 0; i < 3; i++ {

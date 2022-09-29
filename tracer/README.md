@@ -1,5 +1,5 @@
 # 简介
-链路跟踪bintools/tracer为分布式应用提供了完整的调用链路还原、调用请求量统计、链路拓扑、应用依赖分析等工具，可以帮助开发者快速分析和诊断分布式应用架构下的性能瓶颈，提供微服务时代下的开发诊断效率
+链路跟踪github.com/kuchensheng/bintools/tracer为分布式应用提供了完整的调用链路还原、调用请求量统计、链路拓扑、应用依赖分析等工具，可以帮助开发者快速分析和诊断分布式应用架构下的性能瓶颈，提供微服务时代下的开发诊断效率
 # 主要功能
 + 分布式调用链查询和诊断：追踪分布式架构中的所有微服务用户请求，并将它们汇总成分布式调用链
 + 分布式拓扑动态发现：用户的所有分布式微服务应用和相关产品可以通过链路追踪收集到分布式调用信息
@@ -33,18 +33,11 @@ var Conf = &ServiceConf{
 func testReq(req *http.Request)  {
 	//开启服务端跟踪
     serverTracer := NewServerTracer(req)
-	//如果是定时任务，或其他自发性的请求，用以下方式开启服务端跟踪
-    //serverTracer1 := NewServerTracerWithoutReq()
     println("服务端其他业务请求")
     
     for i := 0; i < 3; i++ {
         println("作为客户端，向其他服务发起请求")
 		req1 := &http.Request{}
-		//clientTracer也支持仅有请求头的处理
-        // header := map[string][]string{"id": {"kucs"}}
-        //clientTracer := serverTracer.NewClientWithHeader(header)
-        //clientTracer.TraceName = "自定义traceName，默认:<Method>uri"
-        //clientTracer.AttrMap = []Parameter{}
 		//开启客户端跟踪
         clientTracer := serverTracer.NewClientTracer(req1)
 		println("req1请求处理以及其他业务处理")
@@ -54,23 +47,6 @@ func testReq(req *http.Request)  {
 	//结束服务端跟踪
     serverTracer.EndTrace(OK, "i am not in danger")
 }
-```
-
-tracer模块也提供了http请求封装,这些请求都被serverTracer所包裹。
-分装包括了基本的GET|POST|PUT|DELETE请求
-示例如下
-```go
-req := &http.Request{}
-server := NewServerTracer(req)
-//如果是自发请求，无需req也可创建serverTracer
-//server := NewServerTracerWithoutReq()
-url := "www.baidu.com"
-header := map[string][]string{"id": {"kucs"}}
-parameter := map[string]string{"name":"库陈胜"}
-server.GetSimple("www.baidu.com")
-server.Get(url,header,parameter)
-//server所有业务完成后,结束处理
-server.EndTraceOK()
 ```
 ## 上报的内容格式
 ```text

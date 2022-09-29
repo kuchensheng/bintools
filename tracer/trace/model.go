@@ -84,8 +84,8 @@ type ClientTracer struct {
 }
 
 type Tracer struct {
-	//TraceId 调用链ID,一旦初始化,不能修改
-	TraceId string
+	//TracId 调用链ID,一旦初始化,不能修改
+	TracId string
 	//RpcId 调用顺序，依次为0 → 0.1 → 0.1.1,1 -> 1.1 -> 1.1.1 ...
 	RpcId string
 	//TraceType 链路跟踪类型
@@ -129,7 +129,7 @@ func NewServerTracer(req *http.Request) *ServerTracer {
 //NewServerTracerWithoutReq 开启服务端跟踪,此用于服务端定时任务类请求
 func NewServerTracerWithoutReq() *ServerTracer {
 	tracer := &Tracer{
-		TraceId:     LocalIdCreate.GenerateTraceId(),
+		TracId:      LocalIdCreate.GenerateTraceId(),
 		sampled:     true,
 		ServiceName: conf.Conf.ServiceName,
 		startTime:   time.Now().UnixMilli(),
@@ -161,7 +161,7 @@ func (server *ServerTracer) NewClientWithHeader(header *http.Header) *ClientTrac
 	server.clientRpcId = rpcId
 	//fixme TraceName和Size 需要手动写入
 	clientTracer := &ClientTracer{&Tracer{
-		TraceId:     server.TraceId,
+		TracId:      server.TracId,
 		sampled:     true,
 		ServiceName: conf.Conf.ServiceName,
 		startTime:   time.Now().UnixMilli(),
@@ -170,7 +170,7 @@ func (server *ServerTracer) NewClientWithHeader(header *http.Header) *ClientTrac
 		RemoteIp:    GetLocalIp(),
 		TraceName:   "<default>_default",
 	}}
-	header.Set(T_HEADER_TRACEID, server.TraceId)
+	header.Set(T_HEADER_TRACEID, server.TracId)
 	header.Set(T_HEADER_RPCID, rpcId)
 	return clientTracer
 }
@@ -193,7 +193,7 @@ func (server *ServerTracer) NewClientTracer(req *http.Request) *ClientTracer {
 	}
 
 	clientTracer := &ClientTracer{NewWithRpcId(req, rpcId)}
-	clientTracer.TraceId = server.TraceId
+	clientTracer.TracId = server.TracId
 	clientTracer.Endpoint = CLIENT
 	server.clientRpcId = rpcId
 	return clientTracer
@@ -224,7 +224,7 @@ func New(req *http.Request) *Tracer {
 	}
 	length, _ := strconv.Atoi(strLength)
 	return &Tracer{
-		TraceId:     getOrCreateTraceId(req),
+		TracId:      getOrCreateTraceId(req),
 		sampled:     true,
 		ServiceName: conf.Conf.ServiceName,
 		startTime:   time.Now().UnixMilli(),
@@ -260,7 +260,7 @@ func (tracer *Tracer) EndTrace(status TraceStatusEnum, message string) {
 		log.Default().Println("tracer is ended,will be not append tracer info")
 		return
 	}
-	if tracer.TraceId == "" {
+	if tracer.TracId == "" {
 		log.Println("tracer's traceId is nil,will be not append tracer info")
 		return
 	}
@@ -287,7 +287,7 @@ func (tracer *Tracer) buildLog() push.Message {
 	result := &push.Message{
 		Time: strconv.FormatInt(tracer.endTime, 10) + "000000",
 	}
-	strItem = append(strItem, "0", "default", strconv.FormatInt(tracer.startTime, 10), tracer.TraceId,
+	strItem = append(strItem, "0", "default", strconv.FormatInt(tracer.startTime, 10), tracer.TracId,
 		tracer.RpcId, strconv.Itoa(int(tracer.Endpoint)), strconv.Itoa(int(tracer.TraceType)), tracer.TraceName,
 		tracer.ServiceName, GetLocalIp(), tracer.RemoteIp, strconv.Itoa(int(tracer.status)), strconv.Itoa(tracer.Size),
 		strconv.FormatInt(tracer.endTime-tracer.startTime, 10), tracer.message)

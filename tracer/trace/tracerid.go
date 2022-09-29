@@ -1,6 +1,6 @@
 package trace
 
-type TraceIdIntf interface {
+type GenerateTraceId interface {
 	//GenerateTraceId 生成或获取到唯一traceId值
 	GenerateTraceId() string
 }
