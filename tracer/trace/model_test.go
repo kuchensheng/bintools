@@ -3,7 +3,7 @@ package trace
 import (
 	"encoding/json"
 	"errors"
-	"github.com/isyscore/isc-gobase/tracer/conf"
+	"github.com/kuchensheng/bintools/tracer/conf"
 	"net/http"
 	"net/url"
 	"reflect"
