@@ -1,0 +1,30 @@
+for _, predicate := range predicates {
+		if !predicate.Enabled {
+			continue
+		}
+		if predicate.Type == "if" {
+			//todo 这里是操作符拼接
+			if getValueByKey(predicate.Key) != getValueByKey(predicate.Value) {
+				predicateValue -= 1
+			}
+		} else {
+			thenGraphId := func(cases []model.ApixSwitchPredicate) string {
+				defaultCase := ""
+				for _, switchPredicate := range cases {
+					if switchPredicate.IsDefault {
+						defaultCase = switchPredicate.ThenGraphId
+					}
+					//todo 这里是操作符拼接
+					if getValueByKey(switchPredicate.Key) == getValueByKey(switchPredicate.Value) {
+						return switchPredicate.ThenGraphId
+					}
+				}
+				return defaultCase
+			}(predicate.Cases)
+			if thenGraphId != "" {
+				step.ThenGraphId = thenGraphId
+			} else {
+				predicateValue -= 1
+			}
+		}
+	}

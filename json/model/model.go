@@ -20,12 +20,12 @@ type ApixSchema struct {
 }
 
 type ApixParameter struct {
-	Name     string     `json:"name"`     // 参数名称
-	Type     string     `json:"type"`     // 参数数据类型
-	In       string     `json:"in"`       // 参数的填充位置，query/body/path，为path的时候只能放在最后
-	Schema   ApixSchema `json:"schema"`   // 参数的具体信息，当 type 为 object 或 array 时生效
-	Default  string     `json:"default"`  // 参数的默认值，可以从全局 request 或上一个节点的 response 内获取数据
-	Required bool       `json:"required"` // 是否必填
+	Name     string     `json:"name"`              // 参数名称
+	Type     string     `json:"type"`              // 参数数据类型
+	In       string     `json:"in"`                // 参数的填充位置，query/body/path，为path的时候只能放在最后
+	Schema   ApixSchema `json:"schema"`            // 参数的具体信息，当 type 为 object 或 array 时生效
+	Default  string     `json:"default,omitempty"` // 参数的默认值，可以从全局 request 或上一个节点的 response 内获取数据
+	Required bool       `json:"required"`          // 是否必填
 }
 
 type ApixApi struct {
@@ -35,6 +35,7 @@ type ApixApi struct {
 	Domain       string          `json:"domain"`       // Api 的域名（可选，不填的情况默认refer为当前服务）
 	Parameters   []ApixParameter `json:"parameters"`   // Api 的请求参数
 	RequireLogin bool            `json:"requireLogin"` // API 是否需要登录
+	Version      string          `json:"version,omitempty"`
 }
 
 type ApixSetCookie struct {

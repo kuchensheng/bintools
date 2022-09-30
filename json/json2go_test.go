@@ -1,22 +1,23 @@
 package json
 
 import (
-	"net/http"
 	"testing"
 )
 
 func TestApixData_GenerateGo(t *testing.T) {
-	data := &ApixData{}
+	path, err := GenerateFile2Go("C:\\Users\\admin\\Desktop\\dsl\\first.dsl")
+	if err != nil {
+		t.Logf("通过模板构建文件内容错误,%v", err)
+		t.Fatalf("通过模板构建文件内容错误,%v", err)
+	}
+	t.Logf("go源码文件路径:%s", path)
+}
 
-	rule := data.Rule
-
-	api := rule.Api
-	key := api.Path + api.Method
-	println("插件的key:", key)
-
-	println(rule)
-	http.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
-		//todo 执行插件
-	})
-	http.ListenAndServe(":8080", nil)
+func TestBuild(t *testing.T) {
+	path, err := Build("C:\\Users\\admin\\Desktop\\dsl\\first.dsl")
+	if err != nil {
+		t.Logf("dsl编译失败,%v", err)
+		t.Fatalf("dsl编译失败,%v", err)
+	}
+	t.Logf("go源码文件路径:%s", path)
 }
