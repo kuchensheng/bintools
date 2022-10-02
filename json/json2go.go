@@ -24,7 +24,7 @@ type templateParam struct {
 }
 
 func GenerateJson2Go(content []byte) (string, error) {
-	log.Info().Msgf("将json内容解析成go源码")
+	log.Info().Msgf("将json内容解析成apixData对象")
 	data := model.ApixData{}
 	if err := json.Unmarshal(content, &data); err != nil {
 		log.Error().Msgf("无法将json转化为ApixData,请检查json内容是否符合格式，%v", err)
@@ -34,11 +34,15 @@ func GenerateJson2Go(content []byte) (string, error) {
 	}
 }
 
-func Build(fileName string) (string, error) {
-	goFile, err := GenerateFile2Go(fileName)
+func BuildJson(content []byte) (string, error) {
+	goFile, err := GenerateJson2Go(content)
 	if err != nil {
 		return "", err
 	}
+	return buildGoFile2Plugin(goFile)
+}
+
+func buildGoFile2Plugin(goFile string) (string, error) {
 	//编译
 	buildMode, suffix := getBuildModeAndSuffix()
 	//拼装pluginName
@@ -46,14 +50,30 @@ func Build(fileName string) (string, error) {
 	log.Info().Msgf("开始构建插件：%s", pluginName)
 	targetTmp := pluginName + "_tmp" + suffix
 	target := pluginName + suffix
-	if err = execBuild(buildMode, targetTmp, goFile); err != nil {
+	if err := execBuild(buildMode, targetTmp, goFile); err != nil {
 		return "", err
 	}
-	if err = execUpx(targetTmp, target); err != nil {
+	if err := execUpx(targetTmp, target); err != nil {
 		//压缩失败，不影响使用
 		target = targetTmp
 	}
+	paths := strings.Split(pluginName, "/")
+	model.LoadPlugin(model.PluginDefinition{
+		Name:   paths[len(paths)-1],
+		Path:   target,
+		Method: "Executor",
+		Key:    paths[len(paths)-1],
+	})
 	return target, nil
+}
+
+func Build(fileName string) (string, error) {
+	goFile, err := GenerateFile2Go(fileName)
+	if err != nil {
+		return "", err
+	}
+	return buildGoFile2Plugin(goFile)
+
 }
 
 func execUpx(targetTmp, target string) error {
@@ -186,7 +206,13 @@ func getTemplate(key string) (*template.Template, error) {
 func getKey(api model.ApixApi) string {
 	key := api.Code
 	if key == "" || len(key) == 0 {
-		key = strings.Join([]string{api.Path, api.Method, api.Version}, "_")
+		method := api.Method
+		if method == "" || len(method) == 0 {
+			method = "get"
+		} else {
+			method = strings.ToLower(method)
+		}
+		key = strings.Join([]string{api.Path, method, api.Version}, "_")
 		key = strings.ReplaceAll(key, "/", "")
 		if strings.HasPrefix(key, "_") {
 			key = strings.ReplaceAll(key, "_", "bintools")
