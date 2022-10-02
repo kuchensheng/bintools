@@ -1,7 +1,8 @@
-//go:build linux
+//go:build windows
 
 package main
 
+import "C"
 import (
 	"bytes"
 	"encoding/json"
@@ -20,6 +21,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unsafe"
 )
 
 var path = "/api/test/{1}"
@@ -55,7 +57,9 @@ var parameterMap = make(map[string][]byte)
 // Executor 插件的执行入口
 //
 //export Executor
-func Executor(context *gin.Context) {
+func Executor(request *C.int, response *C.int) {
+	r := (*http.Request)(unsafe.Pointer(request))
+	w := *(*http.Response)(unsafe.Pointer(response))
 	//参数检查
 	if exception := checkParameter(context); exception != nil {
 		context.JSON(400, exception)

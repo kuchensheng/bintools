@@ -29,13 +29,14 @@ type ApixParameter struct {
 }
 
 type ApixApi struct {
-	Path         string          `json:"path"`         // Api 的请求路径，该路径在OS内全局唯一
-	Protocol     string          `json:"protocol"`     // 请求协议，只能是http或https
-	Method       string          `json:"method"`       // 请求方法，GET/POST/PUT/DELETE/OPTION
-	Domain       string          `json:"domain"`       // Api 的域名（可选，不填的情况默认refer为当前服务）
-	Parameters   []ApixParameter `json:"parameters"`   // Api 的请求参数
-	RequireLogin bool            `json:"requireLogin"` // API 是否需要登录
-	Version      string          `json:"version,omitempty"`
+	Path         string          `json:"path"`              // Api 的请求路径，该路径在OS内全局唯一
+	Protocol     string          `json:"protocol"`          // 请求协议，只能是http或https
+	Method       string          `json:"method"`            // 请求方法，GET/POST/PUT/DELETE/OPTION
+	Domain       string          `json:"domain"`            // Api 的域名（可选，不填的情况默认refer为当前服务）
+	Parameters   []ApixParameter `json:"parameters"`        // Api 的请求参数
+	RequireLogin bool            `json:"requireLogin"`      // API 是否需要登录
+	Version      string          `json:"version,omitempty"` //API 版本号
+	Code         string          `json:"code"`              //API唯一标识，默认：Path_Method_Version
 }
 
 type ApixSetCookie struct {
