@@ -1,8 +1,7 @@
-package main
+package model
 
 import (
 	"encoding/json"
-	"github.com/kuchensheng/bintools/json/model"
 	"github.com/rs/zerolog/log"
 	"os"
 	"os/exec"
@@ -25,13 +24,21 @@ type templateParam struct {
 
 func GenerateJson2Go(content []byte) (string, error) {
 	log.Info().Msgf("将json内容解析成apixData对象")
-	data := model.ApixData{}
+	data := ApixData{}
 	if err := json.Unmarshal(content, &data); err != nil {
 		log.Error().Msgf("无法将json转化为ApixData,请检查json内容是否符合格式，%v", err)
 		return "", err
 	} else {
 		return GenerateGo(data)
 	}
+}
+
+func BuildJsonFile(filePath string) (string, error) {
+	goFile, err := GenerateFile2Go(filePath)
+	if err != nil {
+		return "", err
+	}
+	return buildGoFile2Plugin(goFile)
 }
 
 func BuildJson(content []byte) (string, error) {
@@ -58,11 +65,16 @@ func buildGoFile2Plugin(goFile string) (string, error) {
 		target = targetTmp
 	}
 	paths := strings.Split(pluginName, "/")
-	model.LoadPlugin(model.PluginDefinition{
-		Name:   paths[len(paths)-1],
+	name, key := func(ps []string) (string, string) {
+		name := ps[len(paths)-1]
+		k := strings.ReplaceAll(name, "_windows", "")
+		return name, k
+	}(paths)
+	LoadPlugin(PluginDefinition{
+		Name:   name,
 		Path:   target,
 		Method: "Executor",
-		Key:    paths[len(paths)-1],
+		Key:    key,
 	})
 	return target, nil
 }
@@ -103,15 +115,20 @@ func removeTmpFile(targetTmp string) {
 
 func execBuild(buildMode, targetTmp, goFile string) error {
 	defer func(filePath string) {
-		if e := os.Remove(filePath); e != nil {
-			log.Warn().Msgf("goFile remove failed,%v", e)
+		if e := recover(); e != nil {
+			log.Warn().Msgf("goFile build failed,%v", e)
 		}
 
 	}(goFile)
+	if runtime.GOOS == "windows" {
+		targetTmp = strings.ReplaceAll(targetTmp, "/", `\`)
+		goFile = strings.ReplaceAll(goFile, "/", `\`)
+	}
 	buildCmd := exec.Command("go", "build", buildMode, "-o", targetTmp, goFile)
-	err := buildCmd.Run()
+	cmdData, err := buildCmd.Output()
 	if err != nil {
 		log.Error().Msgf("构建失败,cmd=%s:%v", buildCmd.String(), err.Error())
+		log.Error().Msgf("%s", cmdData)
 		return err
 	}
 	log.Info().Msgf("构建成功:plugin=%s", targetTmp)
@@ -137,9 +154,9 @@ func GenerateFile2Go(fileName string) (string, error) {
 	return GenerateJson2Go(data)
 }
 
-func GenerateGo(data model.ApixData) (string, error) {
+func GenerateGo(data ApixData) (string, error) {
 	log.Info().Msgf("apixData对象解析成go源码")
-	var roots []model.ApixStep
+	var roots []ApixStep
 	for _, step := range data.Rule.Steps {
 		if step.PrevId == "" {
 			roots = append(roots, step)
@@ -203,7 +220,7 @@ func getTemplate(key string) (*template.Template, error) {
 	return t.Parse(templateData)
 }
 
-func getKey(api model.ApixApi) string {
+func getKey(api ApixApi) string {
 	key := api.Code
 	if key == "" || len(key) == 0 {
 		method := api.Method

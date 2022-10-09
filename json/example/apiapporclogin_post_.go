@@ -1,19 +1,18 @@
-//go:build linux
+//go:build (linux && cgo) || (darwin && cgo) || (freebsd && cgo)
 
-package main
+package example
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/dop251/goja"
-	"github.com/gin-gonic/gin"
 	"github.com/kuchensheng/bintools/json/model"
 	"github.com/kuchensheng/bintools/tracer/trace"
+	"github.com/rs/zerolog/log"
 	"github.com/yalp/jsonpath"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -22,28 +21,34 @@ import (
 	"time"
 )
 
-var path = "/api/test/{1}"
+var path = "/api/app/orc/login"
 var parameters = func() []model.ApixParameter {
 	var parameters []model.ApixParameter
 	//将字符串内容初始化
-	var strParameter = "[]"
-	json.Unmarshal([]byte(strParameter), &parameters)
+	var strParameter = `[{"name":"dto","type":"","in":"body","schema":{"type":"object","properties":{"name":{"name":"","default":"","in":"","type":"string","subtype":"","children":null,"properties":null,"required":false},"pwd":{"name":"","default":"","in":"","type":"string","subtype":"","children":null,"properties":null,"required":false}},"subtype":"","children":null,"default":""},"required":true}]`
+	if err := json.Unmarshal([]byte(strParameter), &parameters); err != nil {
+		log.Error().Msgf("参数初始化失败,%v", err)
+	}
 	return parameters
 }()
 
 var response = func() map[string]model.ApixResponse {
 	responseMap := make(map[string]model.ApixResponse)
 	//字符串初始化
-	var strResponse = "{}"
-	json.Unmarshal([]byte(strResponse), &responseMap)
+	var strResponse = `{"200":{"schema":{"type":"object","properties":{"name":{"name":"name","default":"$00002.$resp.data.loginName","in":"","type":"string","subtype":"","children":null,"properties":null,"required":false},"nickname":{"name":"","default":"$00002.$resp.data.loginName","in":"","type":"string","subtype":"","children":null,"properties":null,"required":false},"status":{"name":"status","default":"$00002.$resp.data.status","in":"","type":"string","subtype":"","children":null,"properties":null,"required":false},"tenantId":{"name":"","default":"$00002.$resp.data.tenantId","in":"","type":"string","subtype":"","children":null,"properties":null,"required":false}},"subtype":"","children":null,"default":""},"setCookie":null},"401":{"schema":{"type":"","properties":null,"subtype":"","children":null,"default":""},"setCookie":null},"403":{"schema":{"type":"","properties":null,"subtype":"","children":null,"default":""},"setCookie":null},"404":{"schema":{"type":"","properties":null,"subtype":"","children":null,"default":""},"setCookie":null}}`
+	if err := json.Unmarshal([]byte(strResponse), &responseMap); err != nil {
+		log.Error().Msgf("响应信息初始化失败,%v", err)
+	}
 	return responseMap
 }()
 
 var steps = func() []model.ApixStep {
 	var steps []model.ApixStep
 	//将字符串内容初始化
-	var strStep = "[]"
-	json.Unmarshal([]byte(strStep), &steps)
+	var strStep = `[{"prevId":"","graphId":"00001","code":"permissionLogin","domain":"10.30.30.95:38080","protocol":"http","method":"post","path":"/api/permission/auth/login","parameters":[{"name":"dto","type":"","in":"body","schema":{"type":"object","properties":{"loginName":{"name":"loginName","default":"$req.reqbody.name","in":"","type":"string","subtype":"","children":null,"properties":null,"required":false},"password":{"name":"password","default":"$req.data.pwd","in":"","type":"string","subtype":"","children":null,"properties":null,"required":false}},"subtype":"","children":null,"default":""},"required":true}],"local":false,"language":"","script":{"language":"","script":""},"predicate":null,"predicateType":0,"thenGraphId":"","elseGraphId":""},{"prevId":"00001","graphId":"00002","code":"permissionStatus","domain":"10.30.30.95:38080","protocol":"http","method":"get","path":"/api/permission/auth/status","parameters":[{"name":"useCache","type":"boolean","in":"query","schema":{"type":"","properties":null,"subtype":"","children":null,"default":""},"default":"true","required":false},{"name":"token","type":"string","in":"header","schema":{"type":"","properties":null,"subtype":"","children":null,"default":""},"default":"$00001.$resp.data.token","required":true}],"local":false,"language":"","script":{"language":"","script":""},"predicate":null,"predicateType":0,"thenGraphId":"","elseGraphId":""}]`
+	if err := json.Unmarshal([]byte(strStep), &steps); err != nil {
+		log.Error().Msgf("步骤信息初始化失败,%v", err)
+	}
 	return steps
 }()
 
@@ -52,28 +57,54 @@ var scriptEngine *goja.Runtime
 var resultMap = make(map[string][]byte)
 var parameterMap = make(map[string][]byte)
 
-// Executor 插件的执行入口
-//
+//Executor 插件的执行入口
 //export Executor
-func Executor(context *gin.Context) {
+//Executor 插件的执行入口
+//export Executor
+func Executor(r *http.Request, w http.ResponseWriter) {
+	log.Info().Msgf("request信息:%v", *r)
+	defer func(resp http.ResponseWriter) {
+		if x := recover(); x != nil {
+			log.Error().Msgf("调用失败,%v", x)
+			writeResp(400, x, resp)
+		}
+	}(w)
+	log.Info().Msg("执行插件请求，检查必填参数")
 	//参数检查
-	if exception := checkParameter(context); exception != nil {
-		context.JSON(400, exception)
-		return
-	}
+	//if exception := checkParameter(r); exception != nil {
+	//	writeResp(400, exception, w)
+	//	return
+	//}
 	//开启tracer
-	serverTracer := trace.NewServerTracer(context.Request)
+	log.Info().Msg("开启链路跟踪服务端")
+	serverTracer := trace.NewServerTracer(r)
 	defer serverTracer.EndTraceOk()
+	log.Info().Msg("开始执行")
 	exception := executeStep(steps2Map(steps), serverTracer)
 	if exception != nil {
-		context.JSON(400, exception)
+		writeResp(400, exception, w)
 		return
 	}
 	//组装返回值
+	log.Info().Msg("组装返回值")
 	result := packingResponse()
-	context.JSON(200, result)
+	writeResp(200, result, w)
 }
 
+func writeResp(code int, obj any, w http.ResponseWriter) {
+	w.WriteHeader(code)
+	result := model.NewBusinessExceptionWithData(0, "成功", obj)
+	if marshal, err := json.Marshal(result); err != nil {
+		println("无法转化为json", err)
+		w.Write([]byte(fmt.Sprintf("%v", obj)))
+	} else {
+		if _, err = w.Write(marshal); err != nil {
+			println("写入失败", err)
+			return
+		}
+		println("写入完成")
+	}
+}
 func packingResponse() map[string]any {
 	for _, apixResponse := range response {
 		schema := apixResponse.Schema
@@ -83,14 +114,17 @@ func packingResponse() map[string]any {
 }
 
 func steps2Map(steps []model.ApixStep) map[string]model.ApixStep {
-	result := make(map[string]model.ApixStep)
+	log.Info().Msgf("将list转map")
+	result := make(map[string]model.ApixStep, len(steps))
 	for _, step := range steps {
 		result[step.GraphId] = step
 	}
+	log.Info().Msgf("转换完毕")
 	return result
 }
 
 func executeStep(steps map[string]model.ApixStep, tracer *trace.ServerTracer) *model.BusinessException {
+	log.Info().Msgf("按步骤执行")
 	var exception *model.BusinessException
 	var roots []model.ApixStep
 	for _, step := range steps {
@@ -114,7 +148,7 @@ func executeStep(steps map[string]model.ApixStep, tracer *trace.ServerTracer) *m
 	return exception
 }
 
-// executePredicate 筛选出执行步骤
+//executePredicate 筛选出执行步骤
 func executeCurrentStep(step model.ApixStep, steps map[string]model.ApixStep, tracer *trace.ServerTracer) *model.BusinessException {
 	if stepIsEmpty(step) {
 		return nil
@@ -426,8 +460,8 @@ func stepIsEmpty(step model.ApixStep) bool {
 	return reflect.DeepEqual(step, model.ApixStep{})
 }
 
-// todo 暂时不需要进行参数检查
-func checkParameter(context *gin.Context) *model.BusinessException {
+//todo 暂时不需要进行参数检查
+func checkParameter(r *http.Request) *model.BusinessException {
 	defer deferHandler()
 	for _, parameter := range parameters {
 		location := parameter.In
@@ -437,10 +471,10 @@ func checkParameter(context *gin.Context) *model.BusinessException {
 		switch location {
 		case "header":
 			//从请求头中获取
-			return checkHeader(context, parameterName, required)
+			return checkHeader(r, parameterName, required)
 		case "body":
 			//读取请求体内容
-			data, exception := readRequestBody(context)
+			data, exception := readRequestBody(r)
 			if exception != nil {
 				return exception
 			}
@@ -467,11 +501,11 @@ func checkParameter(context *gin.Context) *model.BusinessException {
 			}
 
 		case "cookie":
-			return checkCookie(context, parameterName, required)
+			return checkCookie(r, parameterName, required)
 		case "formData":
-			return checkFormData(context, parameterName, parameterType, required)
+			return checkFormData(r, parameterName, parameterType, required)
 		case "query":
-			return checkQuery(context, parameterName, parameterType, required)
+			return checkQuery(r, parameterName, parameterType, required)
 		default:
 			//未知的参数定义
 			return nil
@@ -480,50 +514,41 @@ func checkParameter(context *gin.Context) *model.BusinessException {
 	return nil
 }
 
-func readRequestBody(context *gin.Context) ([]byte, *model.BusinessException) {
+func readRequestBody(r *http.Request) ([]byte, *model.BusinessException) {
 	defer deferHandler()
-	data, err := context.GetRawData()
+	data, err := ioutil.ReadAll(r.Body)
 	if err != nil {
+		log.Error().Msgf("无法读取请求体:%v", err)
 		return nil, model.NewBusinessException(1080500, "无法读取请求体")
 	}
-	context.Request.Body = ioutil.NopCloser(bytes.NewBuffer(data))
+	r.GetBody = func() (io.ReadCloser, error) {
+		return ioutil.NopCloser(bytes.NewBuffer(data)), nil
+	}
 	parameterMap["data"] = data
 	return data, nil
 }
 
-func checkQuery(context *gin.Context, parameterName, parameterType string, required bool) *model.BusinessException {
+func checkQuery(r *http.Request, parameterName, parameterType string, required bool) *model.BusinessException {
 	defer deferHandler()
-	switch parameterType {
-	case "array":
-		if a := context.QueryArray(parameterName); (a == nil || len(a) == 0) && required {
-			return model.NewBusinessException(1080400, "必填参数缺失:["+parameterName+"]")
-		}
-	case "object":
-		fallthrough
-	case "map":
-		if obj := context.QueryMap(parameterName); (obj == nil || len(obj) == 0) && required {
-			return model.NewBusinessException(1080400, "必填参数缺失:["+parameterName+"]")
-		}
-	default:
-		if v := context.Query(parameterName); v == "" && required {
-			return model.NewBusinessException(1080400, "必填参数缺失:["+parameterName+"]")
-		}
+	get := r.URL.Query().Get(parameterName)
+	if get == "" && required {
+		return model.NewBusinessException(1080400, "必填参数缺失:["+parameterName+"]")
 	}
 	return nil
 }
 
-func checkHeader(context *gin.Context, parameterName string, required bool) *model.BusinessException {
+func checkHeader(r *http.Request, parameterName string, required bool) *model.BusinessException {
 	defer deferHandler()
-	header := context.GetHeader(parameterName)
+	header := r.Header.Get(parameterName)
 	if header == "" && required {
 		return model.NewBusinessException(1080400, "必填参数缺失:["+parameterName+"]")
 	}
 	return nil
 }
 
-func checkCookie(context *gin.Context, parameterName string, required bool) *model.BusinessException {
+func checkCookie(r *http.Request, parameterName string, required bool) *model.BusinessException {
 	defer deferHandler()
-	if c, err := context.Request.Cookie(parameterName); err != nil {
+	if c, err := r.Cookie(parameterName); err != nil {
 		return model.NewBusinessException(1080500, "无法从cookie中读取参数信息:"+err.Error())
 	} else if c == nil && required {
 		return model.NewBusinessException(1080400, "必填参数缺失cookie:["+parameterName+"]:"+err.Error())
@@ -531,30 +556,16 @@ func checkCookie(context *gin.Context, parameterName string, required bool) *mod
 	return nil
 }
 
-func checkFormData(context *gin.Context, parameterName, parameterType string, required bool) *model.BusinessException {
+func checkFormData(r *http.Request, parameterName, parameterType string, required bool) *model.BusinessException {
 	defer deferHandler()
-	switch parameterType {
-	case "array":
-		if arrayP := context.PostFormArray(parameterName); arrayP == nil || len(arrayP) == 0 {
-			if required {
-				return model.NewBusinessException(1080400, "必填参数缺失:["+parameterName+"]")
-			}
-		}
-	case "object":
-		if objP := context.PostFormMap(parameterName); objP == nil {
-			if required {
-				return model.NewBusinessException(1080400, "必填参数缺失:["+parameterName+"]")
-			}
-		}
-	default:
-		if v := context.PostForm(parameterName); v == "" && required {
-			return model.NewBusinessException(1080400, "必填参数缺失:["+parameterName+"]")
-		}
+	get := r.Form.Get(parameterName)
+	if get == "" && required {
+		return model.NewBusinessException(1080400, "必填参数缺失:["+parameterName+"]")
 	}
 	return nil
 }
 
-// checkProperty 检查属性信息，主要检查是否遗漏必填参数
+//checkProperty 检查属性信息，主要检查是否遗漏必填参数
 func checkProperty(properties map[string]model.ApixProperty, parameterName, parameterType string, required bool, data []byte) *model.BusinessException {
 	defer deferHandler()
 	if required && (nil == properties || len(properties) == 0) {
@@ -593,8 +604,4 @@ func checkProperty(properties map[string]model.ApixProperty, parameterName, para
 		return model.NewBusinessException(1080400, "必填参数缺失:["+parameterName+"]")
 	}
 	return nil
-}
-
-func main() {
-
 }

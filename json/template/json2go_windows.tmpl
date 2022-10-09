@@ -12,7 +12,6 @@ import (
 	"github.com/yalp/jsonpath"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -54,31 +53,56 @@ var parameterMap = make(map[string][]byte)
 
 //Executor 插件的执行入口
 //export Executor
-func Executor(request *C.int, response *C.int) {
-	r := (*http.Request)(unsafe.Pointer(request))
-	w := *(*http.Response)(unsafe.Pointer(response))
+func Executor(request *C.int,writer *C.int) uintptr {
+    defer func() {
+		if x := recover();x != nil {
+			println("调用失败:",x)
+		}
+	}()
+	println("获取request",request,"获取writer",writer)
+    r := (*http.Request)(unsafe.Pointer(request))
+    println("request转化完成",r)
+	w := *(*http.ResponseWriter)(unsafe.Pointer(writer))
+	println("writer转换完成",w)
 	//参数检查
 	if exception := checkParameter(r); exception != nil {
-		writeResp(400, exception, w)
-		return
+		return uintptr(unsafe.Pointer(exception))
 	}
 	//开启tracer
-	serverTracer := trace.NewServerTracer(r)
-	defer serverTracer.EndTraceOk()
-	exception := executeStep(steps2Map(steps), serverTracer)
-	if exception != nil {
-		writeResp(400, exception, w)
-		return
-	}
+	println("开启链路跟踪")
+	//serverTracer := trace.NewServerTracer(r)
+	//defer serverTracer.EndTraceOk()
+	//println("链路跟踪tracer",serverTracer)
+	//exception := executeStep(steps2Map(steps), serverTracer)
+	//if exception != nil {
+	//	writeResp(400, exception, w)
+	//	return
+	//}
 	//组装返回值
-	result := packingResponse()
-	writeResp(200, result, w)
+	//result := packingResponse()
+	resultPtr := uintptr(unsafe.Pointer(model.NewBusinessException(0, "成功")))
+	println("转化结果:",resultPtr)
+	return uintprt(1)
 }
 
-func writeResp(code int, obj any, w http.Response) {
-	w.StatusCode = code
-	marshal, _ := json.Marshal(obj)
-	w.Write(bytes.NewBuffer(marshal))
+
+
+func writeResp(code int, obj any, w http.ResponseWriter) {
+    println("写入响应信息",obj,"w=",w)
+	w.WriteHeader(code)
+
+    result := model.NewBusinessExceptionWithData(0,"成功",obj)
+	if _, err := json.Marshal(result); err != nil {
+    	println("无法转化为json", err)
+		w.Write([]byte(fmt.Sprintf("%v",obj)))
+    } else {
+        //if _,err = w.Write(marshal);err != nil {
+        //	println("写入失败",err)
+        //	return
+        //}
+        println("写入完成")
+
+    }
 }
 
 func packingResponse() map[string]any {
@@ -360,12 +384,12 @@ func checkKV(key, value, operator string) bool {
 func convertStr2Int(key, value string) (keyInt, valueInt int) {
 	keyInt, err := strconv.Atoi(key)
 	if err != nil {
-		log.Print("无法将key=[", key, "]转换为int类型")
+		println("无法将key=[%s]转换为int类型",key)
 		keyInt = 0
 	}
 	valueInt, err = strconv.Atoi(value)
 	if err != nil {
-		log.Print("无法将key=[", value, "]转换为int类型")
+		println("无法将key=[%s]转换为int类型",key)
 		valueInt = 0
 	}
 	return

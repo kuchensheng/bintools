@@ -1,3 +1,4 @@
+//go:build (linux && cgo) || (darwin && cgo) || (freebsd && cgo)
 package main
 
 import (
@@ -10,7 +11,7 @@ import (
 	"github.com/yalp/jsonpath"
 	"io"
 	"io/ioutil"
-	"log"
+	"github.com/rs/zerolog/log"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -24,7 +25,9 @@ var parameters = func() []model.ApixParameter {
 	var parameters []model.ApixParameter
 	//将字符串内容初始化
 	var strParameter = `{{.ApixParameters}}`
-	json.Unmarshal([]byte(strParameter), &parameters)
+	if err := json.Unmarshal([]byte(strParameter), &parameters);err != nil {
+    	log.Error().Msgf("参数初始化失败,%v",err)
+    }
 	return parameters
 }()
 
@@ -32,7 +35,9 @@ var response = func() map[string]model.ApixResponse {
 	responseMap := make(map[string]model.ApixResponse)
 	//字符串初始化
 	var strResponse = `{{.ApixResponse }}`
-	json.Unmarshal([]byte(strResponse), &responseMap)
+	if err := json.Unmarshal([]byte(strResponse), &responseMap);err != nil {
+        log.Error().Msgf("响应信息初始化失败,%v",err)
+    }
 	return responseMap
 }()
 
@@ -40,7 +45,9 @@ var steps = func() []model.ApixStep {
 	var steps []model.ApixStep
 	//将字符串内容初始化
 	var strStep = `{{.ApixSteps}}`
-	json.Unmarshal([]byte(strStep), &steps)
+	if err := json.Unmarshal([]byte(strStep), &steps);err != nil {
+            log.Error().Msgf("步骤信息初始化失败,%v",err)
+    }
 	return steps
 }()
 
@@ -51,31 +58,52 @@ var parameterMap = make(map[string][]byte)
 
 //Executor 插件的执行入口
 //export Executor
-func Executor(r *http.Request, w http.Response) {
+//Executor 插件的执行入口
+//export Executor
+func Executor(r *http.Request, w http.ResponseWriter) {
+	log.Info().Msgf("request信息:%v", *r)
+	defer func(resp http.ResponseWriter) {
+		if x := recover(); x != nil {
+			log.Error().Msgf("调用失败,%v", x)
+			writeResp(400,x,resp)
+		}
+	}(w)
+	log.Info().Msg("执行插件请求，检查必填参数")
 	//参数检查
-	if exception := checkParameter(r); exception != nil {
-		writeResp(400, exception, w)
-		return
-	}
+	//if exception := checkParameter(r); exception != nil {
+	//	writeResp(400, exception, w)
+	//	return
+	//}
 	//开启tracer
+	log.Info().Msg("开启链路跟踪服务端")
 	serverTracer := trace.NewServerTracer(r)
 	defer serverTracer.EndTraceOk()
+	log.Info().Msg("开始执行")
 	exception := executeStep(steps2Map(steps), serverTracer)
 	if exception != nil {
 		writeResp(400, exception, w)
 		return
 	}
 	//组装返回值
+	log.Info().Msg("组装返回值")
 	result := packingResponse()
 	writeResp(200, result, w)
 }
 
-func writeResp(code int, obj any, w http.Response) {
-	w.StatusCode = code
-	marshal, _ := json.Marshal(obj)
-	w.Write(bytes.NewBuffer(marshal))
+func writeResp(code int, obj any, w http.ResponseWriter) {
+	w.WriteHeader(code)
+	result := model.NewBusinessExceptionWithData(0,"成功",obj)
+	if marshal, err := json.Marshal(result); err != nil {
+		println("无法转化为json", err)
+		w.Write([]byte(fmt.Sprintf("%v",obj)))
+	} else {
+		if _,err = w.Write(marshal);err != nil {
+			println("写入失败",err)
+			return
+		}
+		println("写入完成")
+	}
 }
-
 func packingResponse() map[string]any {
 	for _, apixResponse := range response {
 		schema := apixResponse.Schema
@@ -85,10 +113,12 @@ func packingResponse() map[string]any {
 }
 
 func steps2Map(steps []model.ApixStep) map[string]model.ApixStep {
+    log.Info().Msgf("将list转map")
 	result := make(map[string]model.ApixStep)
 	for _, step := range steps {
 		result[step.GraphId] = step
 	}
+	log.Info().Msgf("转换完毕")
 	return result
 }
 
@@ -484,10 +514,9 @@ func checkParameter(r *http.Request) *model.BusinessException {
 
 func readRequestBody(r *http.Request) ([]byte, *model.BusinessException) {
 	defer deferHandler()
-	data := make([]byte,r.ContentLength)
-	_, err := r.Body.Read(data)
-	//data, err := context.GetRawData()
+	data,err := ioutil.ReadAll(r.Body)
 	if err != nil {
+		log.Error().Msgf("无法读取请求体:%v",err)
 		return nil, model.NewBusinessException(1080500, "无法读取请求体")
 	}
 	r.GetBody = func() (io.ReadCloser, error) {

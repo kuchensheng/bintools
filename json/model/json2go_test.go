@@ -1,4 +1,4 @@
-package main
+package model
 
 import (
 	"testing"
@@ -14,10 +14,13 @@ func TestApixData_GenerateGo(t *testing.T) {
 }
 
 func TestBuild(t *testing.T) {
-	path, err := Build("D:\\Ideaworkspace\\go_workspace\\bintools\\json\\example\\first_dsl.json")
+	path, err := Build("C:\\Users\\admin\\Desktop\\dsl\\first.dsl")
 	if err != nil {
 		t.Logf("dsl编译失败,%v", err)
 		t.Fatalf("dsl编译失败,%v", err)
+	}
+	for s, info := range GetAllPlugins() {
+		t.Logf("pluginName=[%s],info=%v", s, info)
 	}
 	t.Logf("go源码文件路径:%s", path)
 }
