@@ -3,6 +3,7 @@ package model
 import (
 	"encoding/json"
 	"github.com/rs/zerolog/log"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -50,6 +51,14 @@ func BuildJson(content []byte) (string, error) {
 }
 
 func buildGoFile2Plugin(goFile string) (string, error) {
+	defer func() {
+		log.Info().Msgf("删除文件:%s", goFile)
+		if err := os.Remove(goFile); err != nil {
+			log.Error().Msgf("无法删除文件：%s", goFile)
+		}
+	}()
+	//删除plugins目录中的所有.go文件
+
 	//编译
 	buildMode, suffix := getBuildModeAndSuffix()
 	//拼装pluginName
@@ -118,7 +127,6 @@ func execBuild(buildMode, targetTmp, goFile string) error {
 		if e := recover(); e != nil {
 			log.Warn().Msgf("goFile build failed,%v", e)
 		}
-
 	}(goFile)
 	if runtime.GOOS == "windows" {
 		targetTmp = strings.ReplaceAll(targetTmp, "/", `\`)
@@ -127,10 +135,11 @@ func execBuild(buildMode, targetTmp, goFile string) error {
 	buildCmd := exec.Command("go", "build", buildMode, "-o", targetTmp, goFile)
 	cmdData, err := buildCmd.Output()
 	if err != nil {
-		log.Error().Msgf("构建失败,cmd=%s:%v", buildCmd.String(), err.Error())
+		log.Error().Msgf("构建失败,cmd=%s:%s", buildCmd.String(), debug.Stack())
 		log.Error().Msgf("%s", cmdData)
 		return err
 	}
+
 	log.Info().Msgf("构建成功:plugin=%s", targetTmp)
 	return nil
 }
@@ -184,6 +193,19 @@ func GenerateGo(data ApixData) (string, error) {
 		return "", err
 	}
 	return goFilePath, nil
+}
+
+func removeGoFile() {
+	pwd, _ := os.Getwd()
+	dir := path.Join(pwd, PLUGIN_PATH)
+	readDir, _ := ioutil.ReadDir(dir)
+	for _, info := range readDir {
+		if strings.HasSuffix(info.Name(), "go") {
+			if err := os.Remove(path.Join(dir, info.Name()+".go")); err != nil {
+				log.Error().Msgf("无法删除文件:%s", info.Name()+".go,%v", err)
+			}
+		}
+	}
 }
 
 func getGoFilePath(key string) string {

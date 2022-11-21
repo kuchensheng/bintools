@@ -3,7 +3,9 @@ package main
 import (
 	"flag"
 	"github.com/gin-gonic/gin"
+	//"github.com/kuchensheng/bintools/json/example"
 	"github.com/kuchensheng/bintools/json/model"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"net/http"
 	"os"
@@ -18,7 +20,9 @@ const defaultMultipartMemory = 2 << 20 // 32 MB
 func main() {
 	//启动http服务，承接请求
 	relativePath := flag.String("context_path", "/api/app/orc/*action", "请求路径前缀")
-	serverPort := flag.Int("port", 32100, "服务器端口，默认32100")
+	serverPort := flag.Int("port", 38240, "服务器端口，默认:38240")
+	flag.Parse()
+	log.Logger = log.Logger.Level(zerolog.InfoLevel)
 	wd, _ := os.Getwd()
 	router := gin.Default()
 	router.POST("/api/app/orc-server/build", func(context *gin.Context) {
@@ -60,6 +64,7 @@ func main() {
 		}
 	})
 	router.Any(*relativePath, func(context *gin.Context) {
+		//example.Executor(context.Request, context.Writer)
 		model.ExecutePlugin(getPluginKey(context.Request), context)
 	})
 

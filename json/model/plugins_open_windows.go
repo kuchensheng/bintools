@@ -39,7 +39,7 @@ func (definition PluginDefinition) Execute(ctx *gin.Context) {
 	writer := &ctx.Writer
 	writerPoint := uintptr(unsafe.Pointer(writer))
 	library, err := syscall.LoadLibrary(definition.Path)
-	defer syscall.FreeLibrary(library)
+	//defer syscall.FreeLibrary(library)
 	if err != nil {
 		log.Error().Msgf("无法加载插件，%v", err)
 		ctx.JSON(400, NewBusinessExceptionWithData(1080500, "无法加载插件", err))

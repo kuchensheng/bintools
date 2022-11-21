@@ -1,5 +1,3 @@
-//go:build (linux && cgo) || (darwin && cgo) || (freebsd && cgo)
-
 package example
 
 import (
@@ -19,80 +17,75 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unsafe"
 )
 
-var path = "/api/app/orc/login"
+var path = "/api/app/orc/park/addblackwhitelist"
 var parameters = func() []model.ApixParameter {
 	var parameters []model.ApixParameter
 	//将字符串内容初始化
-	var strParameter = `[{"name":"dto","type":"","in":"body","schema":{"type":"object","properties":{"name":{"name":"","default":"","in":"","type":"string","subtype":"","children":null,"properties":null,"required":false},"pwd":{"name":"","default":"","in":"","type":"string","subtype":"","children":null,"properties":null,"required":false}},"subtype":"","children":null,"default":""},"required":true}]`
-	if err := json.Unmarshal([]byte(strParameter), &parameters); err != nil {
-		log.Error().Msgf("参数初始化失败,%v", err)
-	}
+	var strParameter = `[{"name":"root","type":"","in":"body","schema":{"type":"object","properties":{"blackWhiteType":{"name":"blackWhiteType","default":"","in":"body","type":"string","subtype":"","children":null,"properties":null,"required":true},"endDate":{"name":"endDate","default":"","in":"body","type":"string","subtype":"","children":null,"properties":null,"required":false},"plateNumber":{"name":"plateNumber","default":"","in":"body","type":"string","subtype":"","children":null,"properties":null,"required":true},"reason":{"name":"reason","default":"","in":"body","type":"string","subtype":"","children":null,"properties":null,"required":false},"remark":{"name":"remark","default":"","in":"body","type":"string","subtype":"","children":null,"properties":null,"required":false},"startDate":{"name":"startDate","default":"","in":"body","type":"string","subtype":"","children":null,"properties":null,"required":false}},"subtype":"","children":null,"default":""},"required":false}]`
+	json.Unmarshal([]byte(strParameter), &parameters)
 	return parameters
 }()
 
 var response = func() map[string]model.ApixResponse {
 	responseMap := make(map[string]model.ApixResponse)
 	//字符串初始化
-	var strResponse = `{"200":{"schema":{"type":"object","properties":{"name":{"name":"name","default":"$00002.$resp.data.loginName","in":"","type":"string","subtype":"","children":null,"properties":null,"required":false},"nickname":{"name":"","default":"$00002.$resp.data.loginName","in":"","type":"string","subtype":"","children":null,"properties":null,"required":false},"status":{"name":"status","default":"$00002.$resp.data.status","in":"","type":"string","subtype":"","children":null,"properties":null,"required":false},"tenantId":{"name":"","default":"$00002.$resp.data.tenantId","in":"","type":"string","subtype":"","children":null,"properties":null,"required":false}},"subtype":"","children":null,"default":""},"setCookie":null},"401":{"schema":{"type":"","properties":null,"subtype":"","children":null,"default":""},"setCookie":null},"403":{"schema":{"type":"","properties":null,"subtype":"","children":null,"default":""},"setCookie":null},"404":{"schema":{"type":"","properties":null,"subtype":"","children":null,"default":""},"setCookie":null}}`
-	if err := json.Unmarshal([]byte(strResponse), &responseMap); err != nil {
-		log.Error().Msgf("响应信息初始化失败,%v", err)
-	}
+	var strResponse = `{"200":{"schema":{"type":"object","properties":{"code":{"name":"code","default":"$7787f47c9c2742f1828966209a1e37fa.$resp.data.code","in":"","type":"string","subtype":"","children":null,"properties":null,"required":true},"data":{"name":"data","default":"","in":"","type":"object","subtype":"","children":null,"properties":{"blackGuid":{"name":"blackGuid","default":"$7787f47c9c2742f1828966209a1e37fa.$resp.data.data.blackGuid","in":"","type":"string","subtype":"","children":null,"properties":null,"required":true},"blackWhiteType":{"name":"blackWhiteType","default":"$7787f47c9c2742f1828966209a1e37fa.$resp.data.data.blackWhiteType","in":"","type":"integer","subtype":"","children":null,"properties":null,"required":true},"endDate":{"name":"endDate","default":"$7787f47c9c2742f1828966209a1e37fa.$resp.data.data.endDate","in":"","type":"string","subtype":"","children":null,"properties":null,"required":false},"plateNumber":{"name":"plateNumber","default":"$7787f47c9c2742f1828966209a1e37fa.$resp.data.data.plateNumber","in":"","type":"string","subtype":"","children":null,"properties":null,"required":true},"reason":{"name":"reason","default":"$7787f47c9c2742f1828966209a1e37fa.$resp.data.data.reason","in":"","type":"string","subtype":"","children":null,"properties":null,"required":false},"remark":{"name":"remark","default":"$7787f47c9c2742f1828966209a1e37fa.$resp.data.data.remark","in":"","type":"string","subtype":"","children":null,"properties":null,"required":false},"startDate":{"name":"startDate","default":"$7787f47c9c2742f1828966209a1e37fa.$resp.data.data.startDate","in":"","type":"string","subtype":"","children":null,"properties":null,"required":false}},"required":false},"msg":{"name":"msg","default":"$7787f47c9c2742f1828966209a1e37fa.$resp.data.msg","in":"","type":"string","subtype":"","children":null,"properties":null,"required":true}},"subtype":"","children":null,"default":""},"setCookie":null}}`
+	json.Unmarshal([]byte(strResponse), &responseMap)
 	return responseMap
 }()
 
 var steps = func() []model.ApixStep {
 	var steps []model.ApixStep
 	//将字符串内容初始化
-	var strStep = `[{"prevId":"","graphId":"00001","code":"permissionLogin","domain":"10.30.30.95:38080","protocol":"http","method":"post","path":"/api/permission/auth/login","parameters":[{"name":"dto","type":"","in":"body","schema":{"type":"object","properties":{"loginName":{"name":"loginName","default":"$req.reqbody.name","in":"","type":"string","subtype":"","children":null,"properties":null,"required":false},"password":{"name":"password","default":"$req.data.pwd","in":"","type":"string","subtype":"","children":null,"properties":null,"required":false}},"subtype":"","children":null,"default":""},"required":true}],"local":false,"language":"","script":{"language":"","script":""},"predicate":null,"predicateType":0,"thenGraphId":"","elseGraphId":""},{"prevId":"00001","graphId":"00002","code":"permissionStatus","domain":"10.30.30.95:38080","protocol":"http","method":"get","path":"/api/permission/auth/status","parameters":[{"name":"useCache","type":"boolean","in":"query","schema":{"type":"","properties":null,"subtype":"","children":null,"default":""},"default":"true","required":false},{"name":"token","type":"string","in":"header","schema":{"type":"","properties":null,"subtype":"","children":null,"default":""},"default":"$00001.$resp.data.token","required":true}],"local":false,"language":"","script":{"language":"","script":""},"predicate":null,"predicateType":0,"thenGraphId":"","elseGraphId":""}]`
-	if err := json.Unmarshal([]byte(strStep), &steps); err != nil {
-		log.Error().Msgf("步骤信息初始化失败,%v", err)
-	}
+	var strStep = `[{"prevId":"","graphId":"7787f47c9c2742f1828966209a1e37fa","code":"","domain":"","protocol":"","method":"","path":"","parameters":null,"local":true,"language":"javascript","script":{"language":"javascript","script":"let result={\n  \"data\": {\n    \"blackGuid\": \"67d982eb-270e-4334-b1b4-786e040bffd9\", \n    \"plateNumber\": \"粤 A12345\",\n    \"blackWhiteType\": 3,\n    \"startDate\": \"2018-10-26 17:08:31\",\n    \"endDate\": \"2018-10-27 17:08:35\",\n    \"reason\": \"\",\n    \"remark\": \"\" \n  },\n  \"code\": \"0\", \n  \"msg\": \"\"\n}\n$7787f47c9c2742f1828966209a1e37fa.$resp.data=result\n\n"},"predicate":null,"predicateType":0,"thenGraphId":"","elseGraphId":""}]`
+	json.Unmarshal([]byte(strStep), &steps)
 	return steps
 }()
-
-var scriptEngine *goja.Runtime
 
 var resultMap = make(map[string][]byte)
 var parameterMap = make(map[string][]byte)
 
 //Executor 插件的执行入口
 //export Executor
-//Executor 插件的执行入口
-//export Executor
-func Executor(r *http.Request, w http.ResponseWriter) {
-	log.Info().Msgf("request信息:%v", *r)
-	defer func(resp http.ResponseWriter) {
+func Executor(request *http.Request, writer http.ResponseWriter) uintptr {
+	defer func() {
 		if x := recover(); x != nil {
-			log.Error().Msgf("调用失败,%v", x)
-			writeResp(400, x, resp)
+			println("调用失败:", x.(error))
 		}
-	}(w)
-	log.Info().Msg("执行插件请求，检查必填参数")
+	}()
+	println("获取request", request, "获取writer", writer)
+	r := request
+	println("request转化完成", r)
+	w := writer
+	println("writer转换完成", w)
 	//参数检查
-	//if exception := checkParameter(r); exception != nil {
-	//	writeResp(400, exception, w)
-	//	return
-	//}
+	if exception := checkParameter(r); exception != nil {
+		return uintptr(unsafe.Pointer(exception))
+	}
 	//开启tracer
-	log.Info().Msg("开启链路跟踪服务端")
+	println("开启链路跟踪")
 	serverTracer := trace.NewServerTracer(r)
 	defer serverTracer.EndTraceOk()
-	log.Info().Msg("开始执行")
+	println("链路跟踪tracer", serverTracer)
 	exception := executeStep(steps2Map(steps), serverTracer)
 	if exception != nil {
-		writeResp(400, exception, w)
-		return
+		return uintptr(unsafe.Pointer(exception))
 	}
-	//组装返回值
-	log.Info().Msg("组装返回值")
+	log.Info().Msgf("执行结束，开始组装响应体内容……")
+	// 组装返回值
 	result := packingResponse()
-	writeResp(200, result, w)
+	writeResp(200, result, writer)
+	log.Info().Msgf("响应体组装结束，请求结束")
+	return uintptr(0)
 }
 
 func writeResp(code int, obj any, w http.ResponseWriter) {
+	println("写入响应信息", obj, "w=", w)
 	w.WriteHeader(code)
+
 	result := model.NewBusinessExceptionWithData(0, "成功", obj)
 	if marshal, err := json.Marshal(result); err != nil {
 		println("无法转化为json", err)
@@ -103,8 +96,10 @@ func writeResp(code int, obj any, w http.ResponseWriter) {
 			return
 		}
 		println("写入完成")
+
 	}
 }
+
 func packingResponse() map[string]any {
 	for _, apixResponse := range response {
 		schema := apixResponse.Schema
@@ -114,17 +109,14 @@ func packingResponse() map[string]any {
 }
 
 func steps2Map(steps []model.ApixStep) map[string]model.ApixStep {
-	log.Info().Msgf("将list转map")
-	result := make(map[string]model.ApixStep, len(steps))
+	result := make(map[string]model.ApixStep)
 	for _, step := range steps {
 		result[step.GraphId] = step
 	}
-	log.Info().Msgf("转换完毕")
 	return result
 }
 
 func executeStep(steps map[string]model.ApixStep, tracer *trace.ServerTracer) *model.BusinessException {
-	log.Info().Msgf("按步骤执行")
 	var exception *model.BusinessException
 	var roots []model.ApixStep
 	for _, step := range steps {
@@ -160,6 +152,7 @@ func executeCurrentStep(step model.ApixStep, steps map[string]model.ApixStep, tr
 	//执行当前节点
 	if !scriptIsEmpty(step.Script) {
 		if data, err := executeGoScript(step.Script); err != nil {
+			log.Warn().Msgf("脚本节点执行失败", err)
 			return model.NewBusinessException(1080500, "脚本节点执行失败:"+err.Error())
 		} else {
 			resultMap[step.GraphId] = data
@@ -249,6 +242,7 @@ func parseProperty2Body(properties []model.ApixProperty) []any {
 func parseProperties2Body(properties map[string]model.ApixProperty) map[string]any {
 	body := make(map[string]any)
 	for name, property := range properties {
+		log.Debug().Msgf("组装响应体属性:%s", name)
 		switch property.Type {
 		case "object":
 			body[name] = parseProperties2Body(property.Properties)
@@ -268,7 +262,7 @@ func fillCookie(parameters []model.ApixParameter, request *http.Request) {
 			if parameter.In == "cookie" {
 				request.AddCookie(&http.Cookie{
 					Name:  parameter.Name,
-					Value: getValueByKey(parameter.Default),
+					Value: getValueByKey(parameter.Default).(string),
 				})
 			}
 		}
@@ -279,7 +273,7 @@ func fillQuery(parameters []model.ApixParameter, request *http.Request) {
 	if parameters != nil {
 		for _, parameter := range parameters {
 			if parameter.In == "query" {
-				request.URL.Query().Add(parameter.Name, getValueByKey(parameter.Default))
+				request.URL.Query().Add(parameter.Name, getValueByKey(parameter.Default).(string))
 			}
 		}
 	}
@@ -289,7 +283,7 @@ func fillForm(parameters []model.ApixParameter, request *http.Request) {
 	if parameters != nil {
 		for _, parameter := range parameters {
 			if parameter.In == "formData" {
-				request.Form.Add(parameter.Name, getValueByKey(parameter.Default))
+				request.Form.Add(parameter.Name, getValueByKey(parameter.Default).(string))
 			}
 		}
 	}
@@ -299,7 +293,7 @@ func fillHeader(parameters []model.ApixParameter, request *http.Request) {
 	if parameters != nil {
 		for _, parameter := range parameters {
 			if parameter.In == "header" {
-				request.Header.Set(parameter.Name, getValueByKey(parameter.Default))
+				request.Header.Set(parameter.Name, getValueByKey(parameter.Default).(string))
 			}
 		}
 	}
@@ -310,7 +304,7 @@ func fillPath(path string, parameters []model.ApixParameter) string {
 	if parameters != nil {
 		for _, parameter := range parameters {
 			if parameter.In == "path" {
-				path = strings.Replace(path, parameter.Name, getValueByKey(parameter.Default), 0)
+				path = strings.Replace(path, parameter.Name, getValueByKey(parameter.Default).(string), 0)
 			}
 		}
 	}
@@ -327,7 +321,7 @@ func findNexStep(step model.ApixStep) string {
 			continue
 		}
 		if predicate.Type == "if" {
-			if checkKV(getValueByKey(predicate.Key), getValueByKey(predicate.Value), predicate.Operator) {
+			if checkKV(getValueByKey(predicate.Key).(string), getValueByKey(predicate.Value).(string), predicate.Operator) {
 				predicateValue -= 1
 			}
 		} else {
@@ -337,7 +331,7 @@ func findNexStep(step model.ApixStep) string {
 					if switchPredicate.IsDefault {
 						defaultCase = switchPredicate.ThenGraphId
 					}
-					if checkKV(getValueByKey(switchPredicate.Key), getValueByKey(switchPredicate.Value), switchPredicate.Operator) {
+					if checkKV(getValueByKey(switchPredicate.Key).(string), getValueByKey(switchPredicate.Value).(string), switchPredicate.Operator) {
 						return switchPredicate.ThenGraphId
 					}
 				}
@@ -387,58 +381,86 @@ func checkKV(key, value, operator string) bool {
 func convertStr2Int(key, value string) (keyInt, valueInt int) {
 	keyInt, err := strconv.Atoi(key)
 	if err != nil {
-		log.Print("无法将key=[", key, "]转换为int类型")
+		println("无法将key=[%s]转换为int类型", key)
 		keyInt = 0
 	}
 	valueInt, err = strconv.Atoi(value)
 	if err != nil {
-		log.Print("无法将key=[", value, "]转换为int类型")
+		println("无法将key=[%s]转换为int类型", key)
 		valueInt = 0
 	}
 	return
 }
 
-func getValueByKey(key string) string {
+func getValueByKey(key string) any {
+	log.Debug().Msgf("获取key=%s的值", key)
 	if !(strings.Contains(key, ".") || strings.Contains(key, "$")) {
 		return key
 	}
-	key = strings.ReplaceAll(key, "#", ".")
-	splits := strings.Split(key, ".")
-	if len(splits) < 3 {
-		//key值错误，返回空
-		return key
+	valueKey, data := getResultData(key)
+	subKey := key[len(valueKey):]
+
+	if strings.HasPrefix(subKey, ".") {
+		subKey = "$" + subKey
 	}
-	graphId := splits[0]
-	valueMap := make(map[string][]byte)
-	location := splits[1]
-	if location == "$resp" {
-		valueMap = resultMap
-	} else {
-		valueMap = parameterMap
+	if !strings.HasPrefix(subKey, "$") {
+		subKey = "$" + subKey
 	}
-	subKey := strings.Join(splits[2:], ".")
-	data := valueMap[graphId]
 	if data == nil {
 		//值不存在
 		return ""
-	} else if v, err := jsonpath.Read(data, subKey); err != nil {
-		println(err)
-		return ""
 	} else {
-		return v.(string)
+		var rawData interface{}
+		_ = json.Unmarshal(data, &rawData)
+		if v, err := jsonpath.Read(rawData, subKey); err != nil {
+			log.Error().Msgf("jsonpath读取异常[key=%s],data=%s,%v", subKey, data, err)
+			return ""
+		} else {
+			return v
+		}
+	}
+}
+
+func getResultData(key string) (string, []byte) {
+	key = strings.ReplaceAll(key, "#", ".")
+	splits := strings.Split(key, ".")
+	length := len(splits)
+	if data, ok := resultMap[key]; ok {
+		return key, data
+	} else if length == 1 {
+		return key, data
+	} else {
+		if length == 2 {
+			return getResultData(splits[0])
+		}
+		return getResultData(strings.Join(splits[0:length-2], "."))
 	}
 }
 
 func executeGoScript(script model.ApixScript) ([]byte, error) {
+	log.Info().Msgf("开始执行脚本节点")
 	defer deferHandler()
-	if scriptEngine == nil {
-		scriptEngine = goja.New()
+	vm := goja.New()
+	scriptStr := ""
+	var key string
+	for _, s := range strings.Split(script.Script, "\n") {
+		if strings.HasPrefix(s, "$") && strings.Contains(s, "=") {
+			//不执行,仅提取结果
+			kv := strings.Split(s, "=")
+			key = kv[0]
+			s = kv[1]
+		}
+		scriptStr = strings.Join([]string{scriptStr, s}, "\n")
 	}
-	v, err := scriptEngine.RunString(script.Script)
+
+	v, err := vm.RunString(scriptStr)
+	log.Info().Msgf("结束执行脚本节点")
 	if err != nil {
 		return nil, err
 	}
-	return []byte(v.String()), nil
+	marshal, err := json.Marshal(v.Export())
+	resultMap[key] = marshal
+	return marshal, err
 }
 
 func deferHandler() error {
@@ -516,9 +538,9 @@ func checkParameter(r *http.Request) *model.BusinessException {
 
 func readRequestBody(r *http.Request) ([]byte, *model.BusinessException) {
 	defer deferHandler()
-	data, err := ioutil.ReadAll(r.Body)
+	data, err := io.ReadAll(r.Body)
+	//data, err := context.GetRawData()
 	if err != nil {
-		log.Error().Msgf("无法读取请求体:%v", err)
 		return nil, model.NewBusinessException(1080500, "无法读取请求体")
 	}
 	r.GetBody = func() (io.ReadCloser, error) {
@@ -575,7 +597,7 @@ func checkProperty(properties map[string]model.ApixProperty, parameterName, para
 		//todo 无内容
 		return nil
 	}
-	bodyValue := make(map[string][]byte)
+	bodyValue := make(map[string]string)
 	if err := json.Unmarshal(data, &bodyValue); err != nil {
 		return model.NewBusinessException(1080500, "无法解析请求体内容："+err.Error())
 	}
@@ -589,7 +611,7 @@ func checkProperty(properties map[string]model.ApixProperty, parameterName, para
 
 		switch property.Type {
 		case "object":
-			if exception := checkProperty(properties, s, property.Type, property.Required, bodyValue[property.Name]); exception != nil {
+			if exception := checkProperty(properties, s, property.Type, property.Required, []byte(bodyValue[property.Name])); exception != nil {
 				return exception
 			}
 		case "array":
@@ -604,4 +626,8 @@ func checkProperty(properties map[string]model.ApixProperty, parameterName, para
 		return model.NewBusinessException(1080400, "必填参数缺失:["+parameterName+"]")
 	}
 	return nil
+}
+
+func main() {
+
 }

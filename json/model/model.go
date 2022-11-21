@@ -92,9 +92,10 @@ type ApixStep struct {
 }
 
 type ApixRule struct {
-	Api      ApixApi                 `json:"api"`       // 最终可调用的 restful api 的定义
-	Response map[string]ApixResponse `json:"responses"` // 最终可调用的 restful api 的返回数据
-	Steps    []ApixStep              `json:"steps"`     // api 编排后的的执行步骤
+	Api          ApixApi                 `json:"api"`          // 最终可调用的 restful api 的定义
+	Response     map[string]ApixResponse `json:"responses"`    // 最终可调用的 restful api 的返回数据
+	Steps        []ApixStep              `json:"steps"`        // api 编排后的的执行步骤
+	RequireLogin bool                    `json:"requireLogin"` //是否需要登录
 }
 
 // ApixData API的完整定义

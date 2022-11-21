@@ -9,6 +9,7 @@ import (
 	"github.com/dop251/goja"
 	"github.com/kuchensheng/bintools/json/model"
 	"github.com/kuchensheng/bintools/tracer/trace"
+	"github.com/rs/zerolog/log"
 	"github.com/yalp/jsonpath"
 	"io"
 	"io/ioutil"
@@ -55,54 +56,51 @@ var parameterMap = make(map[string][]byte)
 //export Executor
 func Executor(request *C.int,writer *C.int) uintptr {
     defer func() {
-		if x := recover();x != nil {
-			println("调用失败:",x)
-		}
-	}()
-	println("获取request",request,"获取writer",writer)
-    r := (*http.Request)(unsafe.Pointer(request))
-    println("request转化完成",r)
-	w := *(*http.ResponseWriter)(unsafe.Pointer(writer))
-	println("writer转换完成",w)
-	//参数检查
-	if exception := checkParameter(r); exception != nil {
-		return uintptr(unsafe.Pointer(exception))
-	}
-	//开启tracer
-	println("开启链路跟踪")
-	//serverTracer := trace.NewServerTracer(r)
-	//defer serverTracer.EndTraceOk()
-	//println("链路跟踪tracer",serverTracer)
-	//exception := executeStep(steps2Map(steps), serverTracer)
-	//if exception != nil {
-	//	writeResp(400, exception, w)
-	//	return
-	//}
-	//组装返回值
-	//result := packingResponse()
-	resultPtr := uintptr(unsafe.Pointer(model.NewBusinessException(0, "成功")))
-	println("转化结果:",resultPtr)
-	return uintprt(1)
+    		if x := recover(); x != nil {
+    			println("调用失败:", x.(error))
+    		}
+    	}()
+    	println("获取request", request, "获取writer", writer)
+    	r := (*http.Request)(unsafe.Pointer(request))
+        println("request转化完成",r)
+        w := *(*http.ResponseWriter)(unsafe.Pointer(writer))
+    	println("writer转换完成", w)
+    	//参数检查
+    	if exception := checkParameter(r); exception != nil {
+    		return uintptr(unsafe.Pointer(exception))
+    	}
+    	//开启tracer
+    	println("开启链路跟踪")
+    	serverTracer := trace.NewServerTracer(r)
+    	defer serverTracer.EndTraceOk()
+    	println("链路跟踪tracer", serverTracer)
+    	exception := executeStep(steps2Map(steps), serverTracer)
+    	if exception != nil {
+    		return uintptr(unsafe.Pointer(exception))
+    	}
+    	log.Info().Msgf("执行结束，开始组装响应体内容……")
+    	// 组装返回值
+    	result := packingResponse()
+    	writeResp(200, result, w)
+    	log.Info().Msgf("响应体组装结束，请求结束")
+    	return uintptr(0)
 }
-
-
-
 func writeResp(code int, obj any, w http.ResponseWriter) {
-    println("写入响应信息",obj,"w=",w)
+	println("写入响应信息", obj, "w=", w)
 	w.WriteHeader(code)
 
-    result := model.NewBusinessExceptionWithData(0,"成功",obj)
-	if _, err := json.Marshal(result); err != nil {
-    	println("无法转化为json", err)
-		w.Write([]byte(fmt.Sprintf("%v",obj)))
-    } else {
-        //if _,err = w.Write(marshal);err != nil {
-        //	println("写入失败",err)
-        //	return
-        //}
-        println("写入完成")
+	result := model.NewBusinessExceptionWithData(0, "成功", obj)
+	if marshal, err := json.Marshal(result); err != nil {
+		println("无法转化为json", err)
+		w.Write([]byte(fmt.Sprintf("%v", obj)))
+	} else {
+		if _, err = w.Write(marshal); err != nil {
+			println("写入失败", err)
+			return
+		}
+		println("写入完成")
 
-    }
+	}
 }
 
 func packingResponse() map[string]any {
@@ -157,6 +155,7 @@ func executeCurrentStep(step model.ApixStep, steps map[string]model.ApixStep, tr
 	//执行当前节点
 	if !scriptIsEmpty(step.Script) {
 		if data, err := executeGoScript(step.Script); err != nil {
+			log.Warn().Msgf("脚本节点执行失败", err)
 			return model.NewBusinessException(1080500, "脚本节点执行失败:"+err.Error())
 		} else {
 			resultMap[step.GraphId] = data
@@ -246,6 +245,7 @@ func parseProperty2Body(properties []model.ApixProperty) []any {
 func parseProperties2Body(properties map[string]model.ApixProperty) map[string]any {
 	body := make(map[string]any)
 	for name, property := range properties {
+		log.Debug().Msgf("组装响应体属性:%s", name)
 		switch property.Type {
 		case "object":
 			body[name] = parseProperties2Body(property.Properties)
@@ -265,7 +265,7 @@ func fillCookie(parameters []model.ApixParameter, request *http.Request) {
 			if parameter.In == "cookie" {
 				request.AddCookie(&http.Cookie{
 					Name:  parameter.Name,
-					Value: getValueByKey(parameter.Default),
+					Value: getValueByKey(parameter.Default).(string),
 				})
 			}
 		}
@@ -276,7 +276,7 @@ func fillQuery(parameters []model.ApixParameter, request *http.Request) {
 	if parameters != nil {
 		for _, parameter := range parameters {
 			if parameter.In == "query" {
-				request.URL.Query().Add(parameter.Name, getValueByKey(parameter.Default))
+				request.URL.Query().Add(parameter.Name, getValueByKey(parameter.Default).(string))
 			}
 		}
 	}
@@ -286,7 +286,7 @@ func fillForm(parameters []model.ApixParameter, request *http.Request) {
 	if parameters != nil {
 		for _, parameter := range parameters {
 			if parameter.In == "formData" {
-				request.Form.Add(parameter.Name, getValueByKey(parameter.Default))
+				request.Form.Add(parameter.Name, getValueByKey(parameter.Default).(string))
 			}
 		}
 	}
@@ -296,7 +296,7 @@ func fillHeader(parameters []model.ApixParameter, request *http.Request) {
 	if parameters != nil {
 		for _, parameter := range parameters {
 			if parameter.In == "header" {
-				request.Header.Set(parameter.Name, getValueByKey(parameter.Default))
+				request.Header.Set(parameter.Name, getValueByKey(parameter.Default).(string))
 			}
 		}
 	}
@@ -307,7 +307,7 @@ func fillPath(path string, parameters []model.ApixParameter) string {
 	if parameters != nil {
 		for _, parameter := range parameters {
 			if parameter.In == "path" {
-				path = strings.Replace(path, parameter.Name, getValueByKey(parameter.Default), 0)
+				path = strings.Replace(path, parameter.Name, getValueByKey(parameter.Default).(string), 0)
 			}
 		}
 	}
@@ -324,7 +324,7 @@ func findNexStep(step model.ApixStep) string {
 			continue
 		}
 		if predicate.Type == "if" {
-			if checkKV(getValueByKey(predicate.Key), getValueByKey(predicate.Value), predicate.Operator) {
+			if checkKV(getValueByKey(predicate.Key).(string), getValueByKey(predicate.Value).(string), predicate.Operator) {
 				predicateValue -= 1
 			}
 		} else {
@@ -334,7 +334,7 @@ func findNexStep(step model.ApixStep) string {
 					if switchPredicate.IsDefault {
 						defaultCase = switchPredicate.ThenGraphId
 					}
-					if checkKV(getValueByKey(switchPredicate.Key), getValueByKey(switchPredicate.Value), switchPredicate.Operator) {
+					if checkKV(getValueByKey(switchPredicate.Key).(string), getValueByKey(switchPredicate.Value).(string), switchPredicate.Operator) {
 						return switchPredicate.ThenGraphId
 					}
 				}
@@ -384,58 +384,86 @@ func checkKV(key, value, operator string) bool {
 func convertStr2Int(key, value string) (keyInt, valueInt int) {
 	keyInt, err := strconv.Atoi(key)
 	if err != nil {
-		println("无法将key=[%s]转换为int类型",key)
+		println("无法将key=[%s]转换为int类型", key)
 		keyInt = 0
 	}
 	valueInt, err = strconv.Atoi(value)
 	if err != nil {
-		println("无法将key=[%s]转换为int类型",key)
+		println("无法将key=[%s]转换为int类型", key)
 		valueInt = 0
 	}
 	return
 }
 
-func getValueByKey(key string) string {
+func getValueByKey(key string) any {
+	log.Debug().Msgf("获取key=%s的值", key)
 	if !(strings.Contains(key, ".") || strings.Contains(key, "$")) {
 		return key
 	}
-	key = strings.ReplaceAll(key, "#", ".")
-	splits := strings.Split(key, ".")
-	if len(splits) < 3 {
-		//key值错误，返回空
-		return key
+	valueKey, data := getResultData(key)
+	subKey := key[len(valueKey):]
+
+	if strings.HasPrefix(subKey, ".") {
+		subKey = "$" + subKey
 	}
-	graphId := splits[0]
-	valueMap := make(map[string][]byte)
-	location := splits[1]
-	if location == "$resp" {
-		valueMap = resultMap
-	} else {
-		valueMap = parameterMap
+	if !strings.HasPrefix(subKey, "$") {
+		subKey = "$" + subKey
 	}
-	subKey := strings.Join(splits[2:], ".")
-	data := valueMap[graphId]
 	if data == nil {
 		//值不存在
 		return ""
-	} else if v, err := jsonpath.Read(data, subKey); err != nil {
-		println(err)
-		return ""
 	} else {
-		return v.(string)
+		var rawData interface{}
+		_ = json.Unmarshal(data, &rawData)
+		if v, err := jsonpath.Read(rawData, subKey); err != nil {
+			log.Error().Msgf("jsonpath读取异常[key=%s],data=%s,%v", subKey, data, err)
+			return ""
+		} else {
+			return v
+		}
+	}
+}
+
+func getResultData(key string) (string, []byte) {
+	key = strings.ReplaceAll(key, "#", ".")
+	splits := strings.Split(key, ".")
+	length := len(splits)
+	if data, ok := resultMap[key]; ok {
+		return key, data
+	} else if length == 1 {
+		return key, data
+	} else {
+		if length == 2 {
+			return getResultData(splits[0])
+		}
+		return getResultData(strings.Join(splits[0:length-2], "."))
 	}
 }
 
 func executeGoScript(script model.ApixScript) ([]byte, error) {
+	log.Info().Msgf("开始执行脚本节点")
 	defer deferHandler()
-	if scriptEngine == nil {
-		scriptEngine = goja.New()
+	vm := goja.New()
+	scriptStr := ""
+	var key string
+	for _, s := range strings.Split(script.Script, "\n") {
+		if strings.HasPrefix(s, "$") && strings.Contains(s, "=") {
+			//不执行,仅提取结果
+			kv := strings.Split(s, "=")
+			key = kv[0]
+			s = kv[1]
+		}
+		scriptStr = strings.Join([]string{scriptStr, s}, "\n")
 	}
-	v, err := scriptEngine.RunString(script.Script)
+
+	v, err := vm.RunString(scriptStr)
+	log.Info().Msgf("结束执行脚本节点")
 	if err != nil {
 		return nil, err
 	}
-	return []byte(v.String()), nil
+	marshal, err := json.Marshal(v.Export())
+	resultMap[key] = marshal
+	return marshal, err
 }
 
 func deferHandler() error {
@@ -513,14 +541,13 @@ func checkParameter(r *http.Request) *model.BusinessException {
 
 func readRequestBody(r *http.Request) ([]byte, *model.BusinessException) {
 	defer deferHandler()
-	data := make([]byte,r.ContentLength)
-	_, err := r.Body.Read(data)
+	data, err := io.ReadAll(r.Body)
 	//data, err := context.GetRawData()
 	if err != nil {
 		return nil, model.NewBusinessException(1080500, "无法读取请求体")
 	}
 	r.GetBody = func() (io.ReadCloser, error) {
-		return ioutil.NopCloser(bytes.NewBuffer(data)),nil
+		return ioutil.NopCloser(bytes.NewBuffer(data)), nil
 	}
 	parameterMap["data"] = data
 	return data, nil
@@ -573,7 +600,7 @@ func checkProperty(properties map[string]model.ApixProperty, parameterName, para
 		//todo 无内容
 		return nil
 	}
-	bodyValue := make(map[string][]byte)
+	bodyValue := make(map[string]string)
 	if err := json.Unmarshal(data, &bodyValue); err != nil {
 		return model.NewBusinessException(1080500, "无法解析请求体内容："+err.Error())
 	}
@@ -587,7 +614,7 @@ func checkProperty(properties map[string]model.ApixProperty, parameterName, para
 
 		switch property.Type {
 		case "object":
-			if exception := checkProperty(properties, s, property.Type, property.Required, bodyValue[property.Name]); exception != nil {
+			if exception := checkProperty(properties, s, property.Type, property.Required, []byte(bodyValue[property.Name])); exception != nil {
 				return exception
 			}
 		case "array":
