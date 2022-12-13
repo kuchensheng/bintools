@@ -1,0 +1,12 @@
+package {{ .Key }}
+
+import (
+	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog/log"
+)
+
+
+func Executor(ctx *gin.Context) (any, error) {
+	log.Info().Msgf("请求地址:%s",ctx.Request.URL.Path)
+	return "我是库陈胜",nil
+}

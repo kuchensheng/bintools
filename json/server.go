@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"github.com/gin-gonic/gin"
-	//"github.com/kuchensheng/bintools/json/example"
+
 	"github.com/kuchensheng/bintools/json/model"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -11,7 +11,6 @@ import (
 	"os"
 	"path"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -56,7 +55,7 @@ func main() {
 					context.JSON(400, model.NewBusinessException(1080500, err.Error()))
 					return
 				}
-			case <-time.After(30 * time.Second):
+			case <-time.After(5 * time.Minute):
 				context.JSON(400, model.NewBusinessException(1080500, "构建超时请检查"))
 				return
 			}
@@ -64,29 +63,28 @@ func main() {
 		}
 	})
 	router.Any(*relativePath, func(context *gin.Context) {
-		//example.Executor(context.Request, context.Writer)
-		model.ExecutePlugin(getPluginKey(context.Request), context)
+		ch := make(chan error, 1)
+		var result any
+		go func(channel chan error, ctx *gin.Context) {
+			r, e := model.Execute(ctx)
+			channel <- e
+			result = r
+		}(ch, context)
+		select {
+		case err := <-ch:
+			if err != nil {
+				context.JSON(400, model.NewBusinessException(1080500, err.Error()))
+				return
+			}
+		case <-time.After(30 * time.Second):
+			context.JSON(400, model.NewBusinessException(1080500, "请求超时请检查"))
+			return
+		}
+		context.JSON(http.StatusOK, model.NewBusinessExceptionWithData(0, "请求成功", result))
+
 	})
 
 	port := strconv.Itoa(*serverPort)
 	router.Run(":" + port)
 
-}
-
-func getPluginKey(request *http.Request) string {
-	path := request.URL.Path
-	method := request.Method
-	method = strings.ToLower(method)
-
-	version := request.URL.Query().Get("version")
-	code := request.URL.Query().Get("code")
-	if code != "" {
-		return code
-	}
-	key := strings.Join([]string{path, method, version}, "_")
-	key = strings.ReplaceAll(key, "/", "")
-	if strings.HasPrefix(key, "_") {
-		key = strings.ReplaceAll(key, "_", "bintools")
-	}
-	return key
 }

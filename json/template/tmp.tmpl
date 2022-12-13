@@ -1,0 +1,140 @@
+package {{ .Key }}
+
+import (
+	"fmt"
+	"github.com/gin-gonic/gin"
+	"github.com/kuchensheng/bintools/json/consts"
+	"github.com/kuchensheng/bintools/json/executor/js"
+	"github.com/kuchensheng/bintools/json/executor/parameter"
+	"github.com/kuchensheng/bintools/json/executor/predicate"
+	"github.com/kuchensheng/bintools/json/executor/server"
+	"github.com/kuchensheng/bintools/json/model"
+	"github.com/kuchensheng/bintools/tracer/trace"
+	"github.com/rs/zerolog/log"
+	"encoding/json"
+)
+
+var steps = func() []model.ApixStep {
+	var steps []model.ApixStep
+	//将字符串内容初始化
+	var strStep = `{{.ApixSteps}}`
+	if err := json.Unmarshal([]byte(strStep), &steps);err != nil {
+            log.Error().Msgf("步骤信息初始化失败,%v",err)
+    }
+	return steps
+}()
+var parameters = func() []model.ApixParameter {
+               	var parameters []model.ApixParameter
+               	//将字符串内容初始化
+               	var strParameter = `{{.ApixParameters}}`
+               	if err := json.Unmarshal([]byte(strParameter), &parameters);err != nil {
+                   	log.Error().Msgf("参数初始化失败,%v",err)
+                   }
+               	return parameters
+               }()
+var stepMaps = listToMap(steps)
+
+func Executor(ctx *gin.Context) (any, error) {
+	defer func() {
+		if x := recover(); x != nil {
+			log.Error().Msgf("请求执行失败,%v", x)
+		}
+	}()
+	log.Info().Msgf("当前请求:%s,Method:%s", ctx.Request.URL.Path, ctx.Request.Method)
+	tracer := trace.NewServerTracer(ctx.Request)
+
+	ctx.Set("resultMap", make(map[string]any))
+	ctx.Set("parameterMap", make(map[string]any))
+
+
+	//必填参数检查
+	if err := parameter.CheckParameter(ctx, parameters); err != nil {
+		log.Warn().Msgf("缺少必填参数:%v", err)
+		tracer.EndServerTracer(trace.WARNING, err.Error())
+		return nil, err
+	}
+	ctx.Set(consts.TRACER, tracer)
+	//执行步骤
+	var rangeSteps []model.ApixStep
+	copy(rangeSteps, steps)
+	if err := executeStep(ctx, "", rangeSteps); err != nil {
+		log.Warn().Msgf("流程执行失败:%v", err)
+		tracer.EndServerTracer(trace.WARNING, err.Error())
+		return nil, err
+	}
+	return nil, nil
+
+}
+
+//executeStep 执行步骤
+func executeStep(ctx *gin.Context, PrevId string, sts []model.ApixStep) error {
+	defer deferHandler()
+	for i, step := range sts {
+		if step.PrevId == PrevId {
+			sts = sts[i+1:]
+			if err := runStep(step, ctx, stepMaps); err != nil {
+				return err
+			}
+		} else if e := executeStep(ctx, step.GraphId, sts); e != nil {
+			return e
+		}
+	}
+	return nil
+}
+
+func listToMap(steps []model.ApixStep) map[string]model.ApixStep {
+	result := make(map[string]model.ApixStep)
+	for _, step := range steps {
+		result[step.GraphId] = step
+	}
+	return result
+}
+
+func runStep(step model.ApixStep, ctx *gin.Context, stepMap map[string]model.ApixStep) error {
+	log.Info().Msgf("执行步骤节点:%s", step.GraphId)
+	tracer, _ := ctx.Get(consts.TRACER)
+
+	if step.Language == "javascript" {
+		// 执行JS脚本内容
+		clientTracer := tracer.(*trace.ServerTracer).NewClientWithHeader(&ctx.Request.Header)
+		if result, e := js.ExecuteJavaScript(step.Script.Script, step.GraphId); e != nil {
+			clientTracer.EndTraceError(e)
+			return e
+		} else {
+			v, _ := ctx.Get(consts.RESULTMAP)
+			v.(map[string]any)[fmt.Sprintf("%s%s%s", consts.KEY_TOKEN, step.GraphId, ".$resp.export")] = result
+		}
+	} else if step.Predicate != nil {
+		//执行判断逻辑
+		clientTracer := tracer.(*trace.ServerTracer).NewClientWithHeader(&ctx.Request.Header)
+		if ok, e := predicate.ExecPredicates(ctx, step.Predicate, step.PredicateType); e != nil {
+			clientTracer.EndTraceError(e)
+			return e
+		} else {
+			nextStep := stepMap[step.ThenGraphId]
+			if !ok {
+				nextStep = stepMap[step.ElseGraphId]
+			}
+			if e = runStep(nextStep, ctx, stepMap); e != nil {
+				clientTracer.EndTraceError(e)
+				return e
+			}
+		}
+	} else {
+		//执行普通的服务请求
+		if result, e := server.ExecServer(ctx, step); e != nil {
+			return e
+		} else {
+			v, _ := ctx.Get(consts.RESULTMAP)
+			v.(map[string]any)[fmt.Sprintf("%s%s%s", consts.KEY_TOKEN, step.GraphId, ".$resp.data")] = result
+		}
+	}
+	return nil
+}
+
+func deferHandler() error {
+	if x := recover(); x != nil {
+		return x.(error)
+	}
+	return nil
+}

@@ -20,7 +20,7 @@ type templateParam struct {
 	ApixParameters string `json:"apixParameters"`
 	ApixResponse   string `json:"apixResponse"`
 	ApixSteps      string `json:"apixSteps"`
-	ApixRoots      string `json:"apixRoots"`
+	Key            string `json:"key"`
 }
 
 func GenerateJson2Go(content []byte) (string, error) {
@@ -39,62 +39,15 @@ func BuildJsonFile(filePath string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return buildGoFile2Plugin(goFile)
+	return goFile, err //buildGoFile2Plugin(goFile)
 }
 
 func BuildJson(content []byte) (string, error) {
-	goFile, err := GenerateJson2Go(content)
-	if err != nil {
-		return "", err
-	}
-	return buildGoFile2Plugin(goFile)
-}
-
-func buildGoFile2Plugin(goFile string) (string, error) {
-	defer func() {
-		log.Info().Msgf("删除文件:%s", goFile)
-		if err := os.Remove(goFile); err != nil {
-			log.Error().Msgf("无法删除文件：%s", goFile)
-		}
-	}()
-	//删除plugins目录中的所有.go文件
-
-	//编译
-	buildMode, suffix := getBuildModeAndSuffix()
-	//拼装pluginName
-	pluginName := strings.ReplaceAll(goFile, ".go", "")
-	log.Info().Msgf("开始构建插件：%s", pluginName)
-	targetTmp := pluginName + "_tmp" + suffix
-	target := pluginName + suffix
-	if err := execBuild(buildMode, targetTmp, goFile); err != nil {
-		return "", err
-	}
-	if err := execUpx(targetTmp, target); err != nil {
-		//压缩失败，不影响使用
-		target = targetTmp
-	}
-	paths := strings.Split(pluginName, "/")
-	name, key := func(ps []string) (string, string) {
-		name := ps[len(paths)-1]
-		k := strings.ReplaceAll(name, "_windows", "")
-		return name, k
-	}(paths)
-	LoadPlugin(PluginDefinition{
-		Name:   name,
-		Path:   target,
-		Method: "Executor",
-		Key:    key,
-	})
-	return target, nil
+	return GenerateJson2Go(content)
 }
 
 func Build(fileName string) (string, error) {
-	goFile, err := GenerateFile2Go(fileName)
-	if err != nil {
-		return "", err
-	}
-	return buildGoFile2Plugin(goFile)
-
+	return GenerateFile2Go(fileName)
 }
 
 func execUpx(targetTmp, target string) error {
@@ -165,33 +118,31 @@ func GenerateFile2Go(fileName string) (string, error) {
 
 func GenerateGo(data ApixData) (string, error) {
 	log.Info().Msgf("apixData对象解析成go源码")
-	var roots []ApixStep
-	for _, step := range data.Rule.Steps {
-		if step.PrevId == "" {
-			roots = append(roots, step)
-		}
-	}
+
 	key := getKey(data.Rule.Api)
 	tmpl, err := getTemplate(key)
 	if err != nil {
 		log.Error().Msgf("无法解析模板,%v", err)
 		return "", err
 	}
+	pk := strings.ReplaceAll(key, "_api_app_orc_", "")
+	pk = strings.ReplaceAll(pk, "_", "")
 	tp := templateParam{
 		ApixPath:       data.Rule.Api.Path,
 		ApixParameters: obj2ByteArray(data.Rule.Api.Parameters),
 		ApixResponse:   obj2ByteArray(data.Rule.Response),
-		ApixRoots:      obj2ByteArray(roots),
 		ApixSteps:      obj2ByteArray(data.Rule.Steps),
+		Key:            pk,
 	}
 
-	goFilePath := getGoFilePath(key)
+	goFilePath := getGoFilePath(pk)
 	if f, err := createGoFile(goFilePath); err != nil {
 		return "", err
 	} else if err = tmpl.Execute(f, tp); err != nil {
 		log.Error().Msgf("模板编译失败,%v,%s", err, debug.Stack())
 		return "", err
 	}
+	go Compile(goFilePath, pk)
 	return goFilePath, nil
 }
 
@@ -201,8 +152,8 @@ func removeGoFile() {
 	readDir, _ := ioutil.ReadDir(dir)
 	for _, info := range readDir {
 		if strings.HasSuffix(info.Name(), "go") {
-			if err := os.Remove(path.Join(dir, info.Name()+".go")); err != nil {
-				log.Error().Msgf("无法删除文件:%s", info.Name()+".go,%v", err)
+			if err := os.Remove(path.Join(dir, info.Name()+".go_")); err != nil {
+				log.Error().Msgf("无法删除文件:%s", info.Name()+".go_,%v", err)
 			}
 		}
 	}
@@ -210,7 +161,7 @@ func removeGoFile() {
 
 func getGoFilePath(key string) string {
 	pwd, _ := os.Getwd()
-	return path.Join(pwd, PLUGIN_PATH, key+".go")
+	return path.Join(pwd, "example", key+".go_")
 
 }
 
@@ -227,10 +178,7 @@ func getTemplate(key string) (*template.Template, error) {
 	t := template.New(key)
 	templateData := func() string {
 		wd, _ := os.Getwd()
-		tmplateName := "json2go.tmpl"
-		if runtime.GOOS == "windows" {
-			tmplateName = "json2go_windows.tmpl"
-		}
+		tmplateName := "tmp.tmpl"
 		filePath := path.Join(wd, "template", tmplateName)
 		if data, err := os.ReadFile(filePath); err != nil {
 			log.Error().Msgf("无法读取模板内容，%v", err)
@@ -252,13 +200,7 @@ func getKey(api ApixApi) string {
 			method = strings.ToLower(method)
 		}
 		key = strings.Join([]string{api.Path, method, api.Version}, "_")
-		key = strings.ReplaceAll(key, "/", "")
-		if strings.HasPrefix(key, "_") {
-			key = strings.ReplaceAll(key, "_", "bintools")
-		}
-	}
-	if runtime.GOOS == "windows" {
-		key += "_windows"
+		key = strings.ReplaceAll(key, "/", "_")
 	}
 	return key
 }

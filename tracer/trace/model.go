@@ -62,6 +62,8 @@ const (
 const (
 	T_HEADER_TRACEID = "T-Head-TraceId"
 	T_HEADER_RPCID   = "T-Head-Rpcid"
+	T_RESULT_MSG     = "T-RESULT-MSG"
+	T_RESULT_CODE    = "T-RESULT-CODE"
 )
 
 //请求入参
