@@ -14,11 +14,7 @@ type BusinessException struct {
 }
 
 func (exception *BusinessException) Error() string {
-	if marshal, err := json.Marshal(exception); err != nil {
-		return err.Error()
-	} else {
-		return string(marshal)
-	}
+	return exception.Message
 }
 
 func NewBusinessException(code int, message string) *BusinessException {

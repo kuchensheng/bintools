@@ -26,7 +26,7 @@ func ExecServer(ctx *gin.Context, step model.ApixStep) (any, error) {
 }
 
 func buildRequest(ctx *gin.Context, step model.ApixStep) (*http.Request, error) {
-	scheme := "http" //
+	scheme := "http://" //
 	if step.Protocol == "https" {
 		scheme = "https://"
 	}

@@ -3,8 +3,9 @@ package main
 import (
 	"flag"
 	"github.com/gin-gonic/gin"
-
+	bweditpost "github.com/kuchensheng/bintools/json/example/hahah"
 	"github.com/kuchensheng/bintools/json/model"
+	"github.com/kuchensheng/bintools/json/service"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"net/http"
@@ -20,25 +21,31 @@ func main() {
 	//启动http服务，承接请求
 	relativePath := flag.String("context_path", "/api/app/orc/*action", "请求路径前缀")
 	serverPort := flag.Int("port", 38240, "服务器端口，默认:38240")
+	goPath := flag.String("go_path", "", "Go编译环境地址")
 	flag.Parse()
+	if *goPath != "" {
+		service.GoPath = *goPath
+	}
 	log.Logger = log.Logger.Level(zerolog.InfoLevel)
 	wd, _ := os.Getwd()
 	router := gin.Default()
 	router.POST("/api/app/orc-server/build", func(context *gin.Context) {
 		data, _ := context.GetRawData()
-		if _, err := model.BuildJson(data); err != nil {
+		tenantId := context.GetHeader("isc-tenant-id")
+		if _, err := service.BuildJson(data, tenantId); err != nil {
 			context.JSON(400, model.NewBusinessException(1080500, err.Error()))
 		}
 	})
 	router.POST("/api/app/orc-server/build/file", func(context *gin.Context) {
+		tenantId := context.GetHeader("isc-tenant-id")
 		if file, err := context.FormFile("file"); err != nil {
 			log.Error().Msgf("无法读取文件,key=file,%v", err)
 			context.JSON(400, model.NewBusinessException(1080500, err.Error()))
 			return
 		} else {
-			savePath := path.Join(wd, "example", file.Filename)
+			savePath := path.Join(wd, "example", tenantId, file.Filename)
 
-			if err = model.SaveUploadedFile(file, savePath); err != nil {
+			if err = service.SaveUploadedFile(file, savePath); err != nil {
 				log.Error().Msgf("无法保存文件,key=file,%v", err)
 				context.JSON(400, model.NewBusinessException(1080500, err.Error()))
 				return
@@ -46,7 +53,7 @@ func main() {
 			ch := make(chan error, 1)
 			go func(channel chan error, filePath string) {
 				//读取文件内容，并构建
-				_, err1 := model.BuildJsonFile(savePath)
+				_, err1 := service.BuildJsonFile(savePath, tenantId)
 				channel <- err1
 			}(ch, savePath)
 			select {
@@ -66,7 +73,8 @@ func main() {
 		ch := make(chan error, 1)
 		var result any
 		go func(channel chan error, ctx *gin.Context) {
-			r, e := model.Execute(ctx)
+			r, e := bweditpost.Executorbweditpost(ctx)
+			//r, e := service.Execute(ctx)
 			channel <- e
 			result = r
 		}(ch, context)

@@ -3,11 +3,9 @@ package model
 import (
 	"encoding/json"
 	"github.com/rs/zerolog/log"
-	"io/ioutil"
 	"os"
-	"os/exec"
 	"path"
-	"runtime"
+	"path/filepath"
 	"runtime/debug"
 	"strings"
 	"text/template"
@@ -21,102 +19,31 @@ type templateParam struct {
 	ApixResponse   string `json:"apixResponse"`
 	ApixSteps      string `json:"apixSteps"`
 	Key            string `json:"key"`
+	TenantId       string `json:"tenantId"`
 }
 
-func GenerateJson2Go(content []byte) (string, error) {
+func GenerateJson2Go(content []byte, tenantId string) (string, error) {
 	log.Info().Msgf("将json内容解析成apixData对象")
 	data := ApixData{}
 	if err := json.Unmarshal(content, &data); err != nil {
 		log.Error().Msgf("无法将json转化为ApixData,请检查json内容是否符合格式，%v", err)
 		return "", err
 	} else {
-		return GenerateGo(data)
+		return generateGo(data, tenantId)
 	}
 }
 
-func BuildJsonFile(filePath string) (string, error) {
-	goFile, err := GenerateFile2Go(filePath)
-	if err != nil {
-		return "", err
-	}
-	return goFile, err //buildGoFile2Plugin(goFile)
-}
-
-func BuildJson(content []byte) (string, error) {
-	return GenerateJson2Go(content)
-}
-
-func Build(fileName string) (string, error) {
-	return GenerateFile2Go(fileName)
-}
-
-func execUpx(targetTmp, target string) error {
-	defer func() error {
-		if x := recover(); x != nil {
-			return x.(error)
-		}
-		return nil
-	}()
-	_ = os.Remove(target)
-	upxCmd := exec.Command("upx", "-o", target, targetTmp)
-	if err := upxCmd.Run(); err != nil {
-		log.Error().Msgf("压缩失败%v", err)
-		return err
-	}
-	log.Info().Msgf("压缩成功，plugin=%s", target)
-	//删除临时文件
-	removeTmpFile(targetTmp)
-	return nil
-}
-
-func removeTmpFile(targetTmp string) {
-	_ = os.Remove(targetTmp)
-	hTargetTmp := strings.ReplaceAll(targetTmp, ".dll", ".h")
-	_ = os.Remove(hTargetTmp)
-}
-
-func execBuild(buildMode, targetTmp, goFile string) error {
-	defer func(filePath string) {
-		if e := recover(); e != nil {
-			log.Warn().Msgf("goFile build failed,%v", e)
-		}
-	}(goFile)
-	if runtime.GOOS == "windows" {
-		targetTmp = strings.ReplaceAll(targetTmp, "/", `\`)
-		goFile = strings.ReplaceAll(goFile, "/", `\`)
-	}
-	buildCmd := exec.Command("go", "build", buildMode, "-o", targetTmp, goFile)
-	cmdData, err := buildCmd.Output()
-	if err != nil {
-		log.Error().Msgf("构建失败,cmd=%s:%s", buildCmd.String(), debug.Stack())
-		log.Error().Msgf("%s", cmdData)
-		return err
-	}
-
-	log.Info().Msgf("构建成功:plugin=%s", targetTmp)
-	return nil
-}
-
-func getBuildModeAndSuffix() (string, string) {
-	buildMode := "-buildmode=plugin"
-	suffix := ".so"
-	if runtime.GOOS == "windows" {
-		suffix = ".dll"
-		buildMode = "-buildmode=c-shared"
-	}
-	return buildMode, suffix
-}
-
-func GenerateFile2Go(fileName string) (string, error) {
+//GenerateFile2Go 返回Go文件地址，或者错误信息
+func GenerateFile2Go(fileName, tenantId string) (string, error) {
 	data, err := os.ReadFile(fileName)
 	if err != nil {
 		log.Error().Msgf("无法打开文件,%v", err)
 		return "", err
 	}
-	return GenerateJson2Go(data)
+	return GenerateJson2Go(data, tenantId)
 }
 
-func GenerateGo(data ApixData) (string, error) {
+func generateGo(data ApixData, tenantId string) (string, error) {
 	log.Info().Msgf("apixData对象解析成go源码")
 
 	key := getKey(data.Rule.Api)
@@ -133,39 +60,33 @@ func GenerateGo(data ApixData) (string, error) {
 		ApixResponse:   obj2ByteArray(data.Rule.Response),
 		ApixSteps:      obj2ByteArray(data.Rule.Steps),
 		Key:            pk,
+		TenantId:       tenantId,
 	}
 
-	goFilePath := getGoFilePath(pk)
+	goFilePath := getGoFilePath(pk, tenantId)
 	if f, err := createGoFile(goFilePath); err != nil {
 		return "", err
 	} else if err = tmpl.Execute(f, tp); err != nil {
 		log.Error().Msgf("模板编译失败,%v,%s", err, debug.Stack())
 		return "", err
 	}
-	go Compile(goFilePath, pk)
 	return goFilePath, nil
 }
 
-func removeGoFile() {
+func getGoFilePath(key, tenantId string) string {
 	pwd, _ := os.Getwd()
-	dir := path.Join(pwd, PLUGIN_PATH)
-	readDir, _ := ioutil.ReadDir(dir)
-	for _, info := range readDir {
-		if strings.HasSuffix(info.Name(), "go") {
-			if err := os.Remove(path.Join(dir, info.Name()+".go_")); err != nil {
-				log.Error().Msgf("无法删除文件:%s", info.Name()+".go_,%v", err)
-			}
-		}
-	}
-}
-
-func getGoFilePath(key string) string {
-	pwd, _ := os.Getwd()
-	return path.Join(pwd, "example", key+".go_")
+	return filepath.Join(pwd, "example", tenantId, key+".go_")
 
 }
 
 func createGoFile(goFilePath string) (*os.File, error) {
+	idx := strings.LastIndex(goFilePath, string(os.PathSeparator))
+	dirPath := goFilePath[0:idx]
+	if _, err := os.Stat(dirPath); err != nil {
+		if os.IsNotExist(err) {
+			_ = os.MkdirAll(dirPath, os.ModeDir)
+		}
+	}
 	f, err := os.Create(goFilePath)
 	if err != nil {
 		log.Error().Msgf("文件创建失败,%v", err)
