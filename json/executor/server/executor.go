@@ -7,8 +7,11 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/kuchensheng/bintools/json/consts"
+	"github.com/kuchensheng/bintools/json/executor/util"
 	"github.com/kuchensheng/bintools/json/model"
 	"github.com/kuchensheng/bintools/tracer/trace"
+	"github.com/rs/zerolog/log"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -19,16 +22,27 @@ func ExecServer(ctx *gin.Context, step model.ApixStep) (any, error) {
 	v, _ := ctx.Get(consts.TRACER)
 	tracer := v.(*trace.ServerTracer)
 	if request, err := buildRequest(ctx, step); err != nil {
-		return nil, err
-	} else {
-		return tracer.Call(request)
+		log.Warn().Msgf("不能正确地构建请求")
+		return nil, consts.NewException(step.GraphId, "", err.Error())
+	} else if request != nil {
+		log.Info().Msgf("请求地址:%s", request.URL.String())
+		if result, err1 := tracer.Call(request); err1 != nil {
+			log.Warn().Msgf("服务节点执行失败,%v", err1)
+			return nil, consts.NewException(step.GraphId, "", err1.Error())
+		} else {
+			return result, nil
+		}
 	}
+	return nil, nil
 }
 
 func buildRequest(ctx *gin.Context, step model.ApixStep) (*http.Request, error) {
 	scheme := "http://" //
 	if step.Protocol == "https" {
 		scheme = "https://"
+	}
+	if step.Path == "" || step.Domain == "" || step.Method == "" {
+		return nil, nil
 	}
 	domain := strings.ReplaceAll(step.Domain, "/", "")
 	path := step.Path
@@ -41,6 +55,8 @@ func buildRequest(ctx *gin.Context, step model.ApixStep) (*http.Request, error) 
 	request := &http.Request{
 		Method: step.Method,
 		URL:    url,
+		Header: make(map[string][]string),
+		Form:   make(map[string][]string),
 	}
 	for _, parameter := range step.Parameters {
 		location := parameter.In
@@ -48,35 +64,37 @@ func buildRequest(ctx *gin.Context, step model.ApixStep) (*http.Request, error) 
 		case consts.KEY_BODY:
 			schema := parameter.Schema
 			schemaType := schema.Type
-			if schemaType == consts.OBJECT {
+			if schemaType == consts.OBJECT && schema.Properties != nil && len(schema.Properties) > 0 {
 				body := make(map[string]any)
 				for _, property := range schema.Properties {
-					body[property.Name] = getValue(ctx, property.Default)
+					if v := util.GetBodyParameterValue(ctx, property.Default); v != nil {
+						body[property.Name] = util.GetBodyParameterValue(ctx, property.Default)
+					}
 				}
 				data, _ := json.Marshal(body)
-				if r, e := http.NewRequest(step.Method, strUrl, bytes.NewBuffer(data)); e == nil {
-					request = r
-				} else {
-					return nil, e
+				request.Body = ioutil.NopCloser(bytes.NewBuffer(data))
+				if len(body) == 0 {
+					request.ContentLength = 0
 				}
 			}
+
 		case consts.KEY_QUERY:
-			if v := getValue(ctx, parameter.Default); v != nil {
+			if v := util.GetNotBodyParameterValue(ctx, parameter.Default); v != nil {
 				url.Query().Add(parameter.Name, v.(string))
 			}
 		case consts.KEY_HEADER:
-			if v := getValue(ctx, parameter.Default); v != nil {
+			if v := util.GetNotBodyParameterValue(ctx, parameter.Default); v != nil {
 				request.Header.Set(parameter.Name, v.(string))
 			}
 		case consts.KEY_COOKIE:
-			if v := getValue(ctx, parameter.Default); v != nil {
+			if v := util.GetNotBodyParameterValue(ctx, parameter.Default); v != nil {
 				request.AddCookie(&http.Cookie{
 					Name:  parameter.Name,
 					Value: v.(string),
 				})
 			}
 		case consts.KEY_FORM:
-			if v := getValue(ctx, parameter.Default); v != nil {
+			if v := util.GetNotBodyParameterValue(ctx, parameter.Default); v != nil {
 				request.Form.Add(parameter.Name, v.(string))
 			}
 		default:
@@ -84,9 +102,4 @@ func buildRequest(ctx *gin.Context, step model.ApixStep) (*http.Request, error) 
 		}
 	}
 	return request, nil
-}
-
-func getValue(ctx *gin.Context, express string) any {
-	//todo 从上下文中读取值
-	return nil
 }

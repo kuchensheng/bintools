@@ -10,6 +10,7 @@ import (
 func init() {
 	Symbols["github.com/kuchensheng/bintools/json/executor/parameter/parameter"] = map[string]reflect.Value{
 		// function, constant and variable definitions
-		"CheckParameter": reflect.ValueOf(parameter.CheckParameter),
+		"CheckParameter":  reflect.ValueOf(parameter.CheckParameter),
+		"SetParameterMap": reflect.ValueOf(parameter.SetParameterMap),
 	}
 }

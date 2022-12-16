@@ -75,7 +75,7 @@ func generateGo(data ApixData, tenantId string) (string, error) {
 
 func getGoFilePath(key, tenantId string) string {
 	pwd, _ := os.Getwd()
-	return filepath.Join(pwd, "example", tenantId, key+".go_")
+	return filepath.Join(pwd, "example", tenantId, key+".go")
 
 }
 

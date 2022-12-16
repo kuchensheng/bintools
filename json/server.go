@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"github.com/gin-gonic/gin"
-	bweditpost "github.com/kuchensheng/bintools/json/example/hahah"
 	"github.com/kuchensheng/bintools/json/model"
 	"github.com/kuchensheng/bintools/json/service"
 	"github.com/rs/zerolog"
@@ -73,8 +72,9 @@ func main() {
 		ch := make(chan error, 1)
 		var result any
 		go func(channel chan error, ctx *gin.Context) {
-			r, e := bweditpost.Executorbweditpost(ctx)
-			//r, e := service.Execute(ctx)
+			//获取请求体
+			//r, e := bweditpost.Executorbweditpost(ctx)
+			r, e := service.Execute(ctx)
 			channel <- e
 			result = r
 		}(ch, context)

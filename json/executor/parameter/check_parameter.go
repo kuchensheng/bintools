@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/kuchensheng/bintools/json/consts"
+	"github.com/kuchensheng/bintools/json/executor/util"
 	"github.com/kuchensheng/bintools/json/model"
-	"io"
+	"github.com/rs/zerolog/log"
 	"io/ioutil"
+	"strings"
 )
 
 func deferHandler() error {
@@ -18,120 +20,135 @@ func deferHandler() error {
 	return nil
 }
 
-func CheckParameter(ctx *gin.Context, parameters []model.ApixParameter) error {
+func CheckParameter(parameters []model.ApixParameter, parameterMap map[string]any) error {
 	for _, parameter := range parameters {
 		location := parameter.In
-		switch location {
-		case consts.KEY_QUERY:
-			if e := checkQuery(ctx, parameter.Name, parameter.Required); e != nil {
-				return e
+		required := parameter.Required
+		if location != consts.KEY_BODY {
+			//直接判断
+			if _, ok := parameterMap[getKey(location, parameter.Name)]; !ok && required {
+				//判断不通过
+				return newError(location, parameter.Name)
 			}
-		case consts.KEY_HEADER:
-			if e := checkHeader(ctx, parameter.Name, parameter.Required); e != nil {
-				return e
-			}
-		case consts.KEY_FORM:
-			if e := checkFormData(ctx, parameter.Name, parameter.Required); e != nil {
-				return e
-			}
-		case consts.KEY_COOKIE:
-			if e := checkCookie(ctx, parameter.Name, parameter.Required); e != nil {
-				return e
-			}
-		case consts.KEY_BODY:
-			if e := checkBody(ctx, parameter.Name, parameter.Required); e != nil {
-				return e
-			}
-		default:
-			return errors.New("不支持的类型")
+		} else if e := checkBody(parameter.Schema, parameterMap); e != nil {
+			return e
 		}
 	}
 	return nil
+}
+
+func checkBody(schema model.ApixSchema, parameterMap map[string]any) error {
+	if len(schema.Properties) == 0 {
+		return nil
+	}
+	if v, ok := parameterMap[consts.KEY_REQ_BODY]; !ok {
+		return newError(consts.KEY_BODY, "未获取到请求体内容")
+	} else {
+		var express []string
+		switch schema.Type {
+		case consts.OBJECT:
+			for _, property := range schema.Properties {
+				if e := checkProperty(v, express, property); e != nil {
+					return e
+				}
+			}
+		case consts.ARRAY:
+			for _, child := range schema.Children {
+				if e := checkProperty(v, express, child); e != nil {
+					return e
+				}
+			}
+		default:
+			return nil
+		}
+		return nil
+	}
+}
+
+func checkProperty(v any, express []string, property model.ApixProperty) error {
+	required := property.Required
+	name := property.Name
+	express = append(express, name)
+	switch property.Type {
+	case consts.OBJECT:
+		if len(property.Properties) > 0 {
+			for _, apixProperty := range property.Properties {
+				if e := checkProperty(v, express, apixProperty); e != nil {
+					return e
+				}
+			}
+		}
+	case consts.ARRAY:
+		if len(property.Children) > 0 {
+			for _, child := range property.Children {
+				if e := checkProperty(v, express, child); e != nil {
+					return e
+				}
+			}
+		}
+	default:
+		if _, ok := util.ReadByJsonPath(v, express); !ok && required {
+			//校验不通过
+			return newError(consts.KEY_BODY, name)
+		}
+	}
+	return nil
+}
+
+func getKey(location, name string) (key string) {
+	key = strings.Join([]string{consts.KEY_REQ, location, name}, consts.KEY_REQ_CONNECTOR)
+	return
+}
+
+func SetParameterMap(ctx *gin.Context) map[string]any {
+	parameter := make(map[string]any)
+	//获取请求体
+	if data, err := readRequestBody(ctx); err == nil {
+		parameter[consts.KEY_REQ_BODY] = data
+	}
+
+	//获取请求头参数
+	for s, values := range ctx.Request.Header {
+		parameter[getKey(consts.KEY_HEADER, strings.ToLower(s))] = values[0]
+	}
+	//获取query参数
+	for s, values := range ctx.Request.URL.Query() {
+		parameter[getKey(consts.KEY_QUERY, s)] = values[0]
+	}
+	//获取表单参数
+	for s, values := range ctx.Request.Form {
+		parameter[getKey(consts.KEY_FORM, s)] = values[0]
+	}
+	form := ctx.Request.MultipartForm
+	if form != nil {
+		for s, values := range form.Value {
+			parameter[getKey(consts.KEY_FORM, s)] = values[0]
+		}
+		for s, files := range form.File {
+			parameter[getKey(consts.KEY_FORM, s)] = files[0]
+		}
+	}
+
+	//获取cookie参数
+	for _, cookie := range ctx.Request.Cookies() {
+		parameter[getKey(consts.KEY_COOKIE, cookie.Name)] = cookie.Value
+	}
+	ctx.Set(consts.PARAMETERMAP, parameter)
+	return parameter
 }
 
 func readRequestBody(ctx *gin.Context) ([]byte, error) {
 	defer deferHandler()
-	r := ctx.Request
-	data, err := io.ReadAll(r.Body)
-	if err != nil {
-		return nil, newError(consts.KEY_BODY, "无法读取请求体")
+	if d, e := ctx.GetRawData(); e != nil {
+		log.Error().Msgf("读取请求体内容异常，%v", e)
+		return nil, e
+	} else {
+		ctx.Request.Body = ioutil.NopCloser(bytes.NewBuffer(d))
+		return d, nil
 	}
-	r.GetBody = func() (io.ReadCloser, error) {
-		return ioutil.NopCloser(bytes.NewBuffer(data)), nil
-	}
-	return data, nil
-}
 
-func checkBody(ctx *gin.Context, parameterName string, required bool) error {
-	defer deferHandler()
-	if body, e := readRequestBody(ctx); e != nil {
-		return e
-	} else if v, ok := ctx.Get(consts.PARAMETERMAP); ok {
-		v.(map[string]any)[consts.KEY_REQ_BODY] = body
-	}
-	return nil
-}
-
-func checkQuery(ctx *gin.Context, parameterName string, required bool) error {
-	defer deferHandler()
-	r := ctx.Request
-	get := r.URL.Query().Get(parameterName)
-	if get == "" && required {
-		return newError(consts.KEY_QUERY, parameterName)
-	}
-	if v, ok := ctx.Get(consts.PARAMETERMAP); ok {
-		v.(map[string]any)[consts.KEY_REQ_QUERY+consts.KEY_REQ_CONNECTOR+parameterName] = get
-	}
-	return nil
 }
 
 func newError(location, name string) error {
 	return errors.New(fmt.Sprintf("%s参数缺失，%s=null", location, name))
-}
-
-func checkFormData(ctx *gin.Context, parameterName string, required bool) error {
-	defer deferHandler()
-	r := ctx.Request
-	get := r.Form.Get(parameterName)
-	if get == "" {
-		v := r.MultipartForm.Value
-		if v1, ok := ctx.Get(consts.PARAMETERMAP); ok {
-			v1.(map[string]any)[consts.KEY_REQ_QUERY+consts.KEY_REQ_CONNECTOR+parameterName] = v
-		}
-		if v == nil && required {
-			return newError(consts.KEY_FORM, parameterName)
-		}
-	}
-	if v1, ok := ctx.Get(consts.PARAMETERMAP); ok {
-		v1.(map[string]any)[consts.KEY_REQ_QUERY+consts.KEY_REQ_CONNECTOR+parameterName] = get
-	}
-	return nil
-}
-
-func checkHeader(ctx *gin.Context, parameterName string, required bool) error {
-	defer deferHandler()
-	request := ctx.Request
-	header := request.Header.Get(parameterName)
-	if header == "" && required {
-		return newError("请求头", parameterName)
-	}
-	if v1, ok := ctx.Get(consts.PARAMETERMAP); ok {
-		v1.(map[string]any)[consts.KEY_REQ_QUERY+consts.KEY_REQ_CONNECTOR+parameterName] = header
-	}
-	return nil
-}
-
-func checkCookie(ctx *gin.Context, parameterName string, required bool) error {
-	defer deferHandler()
-	r := ctx.Request
-	if c, err := r.Cookie(parameterName); err != nil {
-		return newError(consts.KEY_COOKIE, parameterName)
-	} else if c == nil && required {
-		return newError(consts.KEY_COOKIE, parameterName)
-	} else {
-		if v1, ok := ctx.Get(consts.PARAMETERMAP); ok {
-			v1.(map[string]any)[consts.KEY_REQ_QUERY+consts.KEY_REQ_CONNECTOR+parameterName] = c
-		}
-	}
-	return nil
 }

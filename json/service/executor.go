@@ -7,7 +7,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/traefik/yaegi/interp"
 	"github.com/traefik/yaegi/stdlib"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -27,6 +26,7 @@ var scriptEngineFunc = func() *interp.Interpreter {
 func Compile(path string) error {
 	key := "default"
 	if f, e := os.Stat(path); e != nil {
+		log.Error().Msgf("无法打开待编译文件：%v", e)
 		return e
 	} else {
 		key = f.Name()
@@ -49,39 +49,37 @@ func Compile(path string) error {
 func Execute(context *gin.Context) (any, error) {
 	//执行go脚本
 	pk := getPackage(context)
-	script := readGoScript(context, pk)
+	scriptPath := readGoScript(context, pk)
 	var scriptEngine *interp.Interpreter
-	var err error
 	if p, ok := programMap[pk]; ok {
 		scriptEngine = p
 	} else {
 		log.Info().Msgf("执行了未编译的脚本,这需要花点时间,pk = %s", pk)
-		ch := make(chan *interp.Interpreter, 1)
+		ch := make(chan error, 1)
 		go func() {
-			scriptEngine = scriptEngineFunc()
-			if _, err = scriptEngine.Eval(script); err != nil {
-				log.Error().Msgf("脚本解析异常,%v", err)
-				ch <- nil
-			} else {
-				ch <- scriptEngine
-			}
+			ch <- Compile(scriptPath)
 		}()
 		select {
-		case scriptEngine = <-ch:
-			if scriptEngine != nil {
-				programMap[pk] = scriptEngine
-			} else {
+		case e := <-ch:
+			if e != nil {
 				return nil, errors.New("脚本解析失败")
+			} else if p, ok = programMap[pk]; ok {
+				scriptEngine = p
 			}
-		case <-time.After(5 * time.Second):
+		case <-time.After(1 * time.Minute):
 			log.Warn().Msgf("编译比较耗时，不建议等待")
 			return nil, errors.New("正在执行脚本初始化，请稍后再试")
 		}
 		log.Info().Msgf("脚本编译完成")
 	}
-	v, _ := scriptEngine.Eval(fmt.Sprintf("%s.%s%s", pk, "Executor", pk))
-	fu := v.Interface().(func(ctx *gin.Context) (any, error))
-	return fu(context)
+	if v, e := scriptEngine.Eval(fmt.Sprintf("%s.%s%s", pk, "Executor", pk)); e != nil {
+		log.Error().Msgf("Go 脚本编译异常,%v", e)
+	} else if v.Type() != nil {
+		return v.Interface().(func(ctx *gin.Context) (any, error))(context)
+	}
+
+	return nil, nil
+
 }
 
 func getPackage(ctx *gin.Context) string {
@@ -99,10 +97,5 @@ func readGoScript(ctx *gin.Context, key string) string {
 	wd, _ := os.Getwd()
 	tenantId := ctx.GetHeader("isc-tenant-id")
 	fp := filepath.Join(wd, "example", tenantId, key+".go_")
-	if data, err := ioutil.ReadFile(fp); err != nil {
-		log.Error().Msgf("文件读取失败,path=[%s],错误信息：%s", fp, err)
-		return ""
-	} else {
-		return string(data)
-	}
+	return fp
 }

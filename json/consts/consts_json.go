@@ -51,6 +51,7 @@ const (
 	KEY_COOKIE        = "cookie"
 	KEY_PATH          = "path"
 	KEY_FORM          = "form"
+	KEY_DATA          = "data"
 	KEY_REQ_QUERY     = KEY_REQ + KEY_REQ_CONNECTOR + KEY_QUERY
 	KEY_REQ_HEADER    = KEY_REQ + KEY_REQ_CONNECTOR + KEY_HEADER
 	KEY_REQ_COOKIE    = KEY_REQ + KEY_REQ_CONNECTOR + KEY_COOKIE

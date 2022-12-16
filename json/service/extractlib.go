@@ -7,6 +7,7 @@
 //go:generate yaegi extract "github.com/kuchensheng/bintools/json/executor/parameter"
 //go:generate yaegi extract "github.com/kuchensheng/bintools/json/executor/predicate"
 //go:generate yaegi extract "github.com/kuchensheng/bintools/json/executor/server"
+//go:generate yaegi extract "github.com/kuchensheng/bintools/json/executor/response"
 
 package service
 

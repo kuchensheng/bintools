@@ -8,6 +8,7 @@ import (
 	"github.com/kuchensheng/bintools/json/executor/parameter"
 	"github.com/kuchensheng/bintools/json/executor/predicate"
 	"github.com/kuchensheng/bintools/json/executor/server"
+	"github.com/kuchensheng/bintools/json/executor/response"
 	"github.com/kuchensheng/bintools/json/model"
 	"github.com/kuchensheng/bintools/tracer/trace"
 	"github.com/rs/zerolog/log"
@@ -46,6 +47,16 @@ var parameters = func() []model.ApixParameter {
 
 var stepMaps = listToMap(steps)
 
+var responses = func() map[string]model.ApixResponse {
+	responseMap := make(map[string]model.ApixResponse)
+	//字符串初始化
+	var strResponse = `{{.ApixResponse }}`
+	if err := json.Unmarshal([]byte(strResponse), &responseMap);err != nil {
+        log.Error().Msgf("响应信息初始化失败,%v",err)
+    }
+	return responseMap
+}()
+
 func Executor{{.Key }}(ctx *gin.Context) (any, error) {
 	defer func() {
 		if x := recover(); x != nil {
@@ -57,19 +68,18 @@ func Executor{{.Key }}(ctx *gin.Context) (any, error) {
     if (tenantId != tId) {
         return nil,errors.New("禁止操作：租户不匹配")
     }
-    log.Info().Msg("链路跟踪启动...")
+    parameterMap := parameter.SetParameterMap(ctx)
+	log.Info().Msg("链路跟踪启动...")
 	tracer := trace.NewServerTracer(ctx.Request)
-	log.Info().Msgf("traceId = %s",tracer.TracId)
-	ctx.Set("resultMap", make(map[string]any))
-	ctx.Set("parameterMap", make(map[string]any))
-
+	log.Info().Msgf("traceId = %s", tracer.TracId)
 
 	//必填参数检查
-	if err := parameter.CheckParameter(ctx, parameters); err != nil {
+	if err := parameter.CheckParameter(parameters, parameterMap); err != nil {
 		log.Warn().Msgf("缺少必填参数:%v", err)
 		tracer.EndServerTracer(trace.WARNING, err.Error())
 		return nil, err
 	}
+	ctx.Set(consts.RESULTMAP, make(map[string]any))
 	ctx.Set(consts.TRACER, tracer)
 	//执行步骤
     var rangeSteps = func() []model.ApixStep{
@@ -86,21 +96,34 @@ func Executor{{.Key }}(ctx *gin.Context) (any, error) {
 		tracer.EndServerTracer(trace.WARNING, err.Error())
 		return nil, err
 	}
-	return nil, nil
+	log.Info().Msgf("流程步骤执行完毕，开始组装结果映射...")
+    return response.BuildSuccessResponse(ctx,responses)
 
 }
 
+//todo 下个迭代，这里将直接用模板生成执行代码，而不是先解析再执行
 //executeStep 执行步骤
 func executeStep(ctx *gin.Context, PrevId string, sts []model.ApixStep) error {
 	defer deferHandler()
-	for i, step := range sts {
+
+	for _, step := range sts {
 		if step.PrevId == PrevId {
-			sts = sts[i+1:]
 			if err := runStep(step, ctx, stepMaps); err != nil {
 				return err
 			}
-		} else if e := executeStep(ctx, step.GraphId, sts); e != nil {
-			return e
+		} else {
+			subList := func() []model.ApixStep {
+				var result []model.ApixStep
+				for _, st := range sts {
+					if st.PrevId == step.GraphId {
+						result = append(result, st)
+					}
+				}
+				return result
+			}()
+			if e := executeStep(ctx, step.GraphId, subList); e != nil {
+				return e
+			}
 		}
 	}
 	return nil
@@ -121,7 +144,7 @@ func runStep(step model.ApixStep, ctx *gin.Context, stepMap map[string]model.Api
 	if step.Language == "javascript" {
 		// 执行JS脚本内容
 		clientTracer := tracer.(*trace.ServerTracer).NewClientWithHeader(&ctx.Request.Header)
-		if result, e := js.ExecuteJavaScript(step.Script.Script, step.GraphId); e != nil {
+		if result, e := js.ExecuteJavaScript(ctx,step.Script.Script, step.GraphId); e != nil {
 			clientTracer.EndTraceError(e)
 			return e
 		} else {
