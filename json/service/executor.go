@@ -96,6 +96,6 @@ func getPackage(ctx *gin.Context) string {
 func readGoScript(ctx *gin.Context, key string) string {
 	wd, _ := os.Getwd()
 	tenantId := ctx.GetHeader("isc-tenant-id")
-	fp := filepath.Join(wd, "example", tenantId, key+".go_")
+	fp := filepath.Join(wd, "example", tenantId, key+".go")
 	return fp
 }
