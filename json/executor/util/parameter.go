@@ -1,6 +1,7 @@
 package util
 
 import (
+	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"github.com/kuchensheng/bintools/json/consts"
 	"github.com/rs/zerolog/log"
@@ -15,6 +16,8 @@ func GetContextValue(ctx *gin.Context, key string) any {
 		} else {
 			return GetNotBodyParameterValue(ctx, key)
 		}
+	} else if !strings.HasPrefix(key, consts.KEY_TOKEN) {
+		return key
 	}
 	return GetResultValue(ctx, key)
 }
@@ -27,7 +30,7 @@ func GetBodyParameterValue(ctx *gin.Context, key string) any {
 			return body
 		}
 		split := strings.Split(key, consts.KEY_REQ_CONNECTOR)
-		if result, ok1 := ReadByJsonPath(body, split[2:]); ok1 {
+		if result, ok1 := ReadByJsonPath(body.([]byte), split[2:]); ok1 {
 			return result
 		}
 	}
@@ -54,30 +57,49 @@ func GetResultValue(ctx *gin.Context, key string) any {
 		if result, find := resultMap[key]; find {
 			return result
 		}
-		split := strings.Split(key, consts.KEY_REQ_CONNECTOR)
-		mapKey := strings.Join(split[0:2], consts.KEY_REQ_CONNECTOR)
-		if res, existed := resultMap[mapKey]; existed {
-			if result, ok1 := ReadByJsonPath(res, split[2:]); ok1 {
-				return result
-			}
-		}
+		var suffix []string
+		return getValue(resultMap, key, suffix)
 	}
 	return nil
 }
 
+func getValue(resultMap map[string]any, prefix string, suffix []string) any {
+	if prefix == "" {
+		return nil
+	}
+	if result, ok := resultMap[prefix]; ok {
+		if suffix != nil {
+			if result, ok = ReadByJsonPath(result.([]byte), suffix); ok {
+				return result
+			}
+		}
+		return result
+	}
+	split := strings.Split(prefix, consts.KEY_REQ_CONNECTOR)
+	length := len(split)
+	mapKey := strings.Join(split[0:length-1], consts.KEY_REQ_CONNECTOR)
+	suffix = append(suffix, split[length-1])
+	return getValue(resultMap, mapKey, suffix)
+}
+
 func SetResultValue(ctx *gin.Context, key string, value any) {
+	log.Info().Msgf("结果赋值,key=%s,value = %s", key, value)
 	if v, ok := ctx.Get(consts.RESULTMAP); ok {
-		v.(map[string]any)[key] = value
+		data, _ := json.Marshal(value)
+		v.(map[string]any)[key] = data
 	}
 }
 
-func ReadByJsonPath(v any, express []string) (any, bool) {
+func ReadByJsonPath(v []byte, express []string) (any, bool) {
 	var key []string
 	key = append(key, "$")
 	key = append(key, express...)
 	path := strings.Join(key, ".")
 	log.Info().Msgf("内容读取路径:key=%s", path)
-	if res, err := jsonpath.Read(v, path); err != nil {
+	var data interface{}
+	_ = json.Unmarshal(v, &data)
+	if res, err := jsonpath.Read(data, path); err != nil {
+		log.Warn().Msgf("无法从jsonPath中读取数据,%v", err)
 		return nil, false
 	} else {
 		log.Info().Msgf("读取到内容:%v", res)

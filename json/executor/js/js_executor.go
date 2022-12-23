@@ -36,7 +36,7 @@ func ExecuteJavaScript(ctx *gin.Context, script, name string) (any, error) {
 	if v, err := scriptEngine.RunString(script); err != nil {
 		return nil, err
 	} else {
-		return []byte(v.String()), nil
+		return v.Export(), nil
 	}
 }
 

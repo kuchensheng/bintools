@@ -169,12 +169,9 @@ func runStep(step model.ApixStep, ctx *gin.Context, stepMap map[string]model.Api
 		}
 	} else {
 		//执行普通的服务请求
-		if result, e := server.ExecServer(ctx, step); e != nil {
-			return e
-		} else {
-			v, _ := ctx.Get(consts.RESULTMAP)
-			v.(map[string]any)[fmt.Sprintf("%s%s%s", consts.KEY_TOKEN, step.GraphId, ".$resp.data")] = result
-		}
+        if e := server.ExecServer(ctx, step); e != nil {
+            return e
+        }
 	}
 	return nil
 }

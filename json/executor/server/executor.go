@@ -18,22 +18,23 @@ import (
 )
 
 //执行服务节点
-func ExecServer(ctx *gin.Context, step model.ApixStep) (any, error) {
+func ExecServer(ctx *gin.Context, step model.ApixStep) error {
 	v, _ := ctx.Get(consts.TRACER)
 	tracer := v.(*trace.ServerTracer)
 	if request, err := buildRequest(ctx, step); err != nil {
 		log.Warn().Msgf("不能正确地构建请求")
-		return nil, consts.NewException(step.GraphId, "", err.Error())
+		return consts.NewException(step.GraphId, "", err.Error())
 	} else if request != nil {
 		log.Info().Msgf("请求地址:%s", request.URL.String())
 		if result, err1 := tracer.Call(request); err1 != nil {
 			log.Warn().Msgf("服务节点执行失败,%v", err1)
-			return nil, consts.NewException(step.GraphId, "", err1.Error())
+			return consts.NewException(step.GraphId, "", err1.Error())
 		} else {
-			return result, nil
+			util.SetResultValue(ctx, fmt.Sprintf("%s%s%s", consts.KEY_TOKEN, step.GraphId, ".$resp.export"), result)
+			return nil
 		}
 	}
-	return nil, nil
+	return nil
 }
 
 func buildRequest(ctx *gin.Context, step model.ApixStep) (*http.Request, error) {

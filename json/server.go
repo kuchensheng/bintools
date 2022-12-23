@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"github.com/gin-gonic/gin"
+	bweditpost "github.com/kuchensheng/bintools/json/example/hahaha"
 	"github.com/kuchensheng/bintools/json/model"
 	"github.com/kuchensheng/bintools/json/service"
 	"github.com/rs/zerolog"
@@ -33,6 +34,7 @@ func main() {
 		tenantId := context.GetHeader("isc-tenant-id")
 		if _, err := service.BuildJson(data, tenantId); err != nil {
 			context.JSON(400, model.NewBusinessException(1080500, err.Error()))
+
 		}
 	})
 	router.POST("/api/app/orc-server/build/file", func(context *gin.Context) {
@@ -73,8 +75,8 @@ func main() {
 		var result any
 		go func(channel chan error, ctx *gin.Context) {
 			//获取请求体
-			//r, e := bweditpost.Executorbweditpost(ctx)
-			r, e := service.Execute(ctx)
+			r, e := bweditpost.Executorbweditpost(ctx)
+			//r, e := service.Execute(ctx)
 			channel <- e
 			result = r
 		}(ch, context)

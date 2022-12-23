@@ -87,7 +87,7 @@ func checkProperty(v any, express []string, property model.ApixProperty) error {
 			}
 		}
 	default:
-		if _, ok := util.ReadByJsonPath(v, express); !ok && required {
+		if _, ok := util.ReadByJsonPath(v.([]byte), express); !ok && required {
 			//校验不通过
 			return newError(consts.KEY_BODY, name)
 		}
