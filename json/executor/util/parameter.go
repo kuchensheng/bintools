@@ -83,7 +83,7 @@ func getValue(resultMap map[string]any, prefix string, suffix []string) any {
 }
 
 func SetResultValue(ctx *gin.Context, key string, value any) {
-	log.Info().Msgf("结果赋值,key=%s,value = %s", key, value)
+	//log.Info().Msgf("结果赋值,key=%s,value = %s", key, value)
 	if v, ok := ctx.Get(consts.RESULTMAP); ok {
 		data, _ := json.Marshal(value)
 		v.(map[string]any)[key] = data

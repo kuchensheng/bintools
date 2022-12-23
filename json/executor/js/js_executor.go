@@ -8,6 +8,7 @@ import (
 	"github.com/kuchensheng/bintools/json/executor/util"
 	"github.com/kuchensheng/bintools/tracer/trace"
 	"github.com/rs/zerolog/log"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
@@ -17,7 +18,11 @@ var scriptEnginFunc = func(context *gin.Context) *goja.Runtime {
 	scriptEngine := goja.New()
 	scriptEngine.Set("ctx", context)
 	scriptEngine.Set("getValueByKey", func(ctx *gin.Context, key string) string {
-		return util.GetContextValue(ctx, key).(string)
+		value := util.GetContextValue(ctx, key)
+		if value != nil {
+			return value.(string)
+		}
+		return ""
 	})
 	scriptEngine.Set("setValueByKey", func(ctx *gin.Context, key string, value any) {
 		util.SetResultValue(ctx, key, value)
@@ -37,6 +42,7 @@ func ExecuteJavaScript(ctx *gin.Context, script, name string) (any, error) {
 	defer func() {
 		if x := recover(); x != nil {
 			log.Error().Msgf("JS脚本执行异常，panic is :%v", x)
+			fmt.Printf("%s\n", debug.Stack())
 			clientTracer.EndTraceError(x.(error))
 		}
 	}()
@@ -48,7 +54,10 @@ func ExecuteJavaScript(ctx *gin.Context, script, name string) (any, error) {
 		return nil, err
 	} else {
 		clientTracer.EndTraceOk()
-		return v.Export(), nil
+		if v != nil || v.ExportType() != nil {
+			return v.Export(), nil
+		}
+		return v.String(), nil
 	}
 }
 
@@ -56,7 +65,13 @@ func replaceScript(script string) string {
 	log.Info().Msgf("替换前的脚本内容:%s", script)
 	split := strings.Split(script, "\n")
 	var placeholder []consts.Pair[string, string]
-	for i, s := range split {
+	var noSpaceLines []string
+	for _, s := range split {
+		if s != "" && strings.TrimSpace(s) != "" {
+			noSpaceLines = append(noSpaceLines, s)
+		}
+	}
+	for i, s := range noSpaceLines {
 		s = strings.TrimSpace(s)
 		if strings.HasPrefix(s, "return") {
 			sb := strings.Builder{}
@@ -69,29 +84,11 @@ func replaceScript(script string) string {
 		}
 
 		if validToken(s) {
-			keys := strings.Split(s, "=")
-			first := strings.TrimSpace(keys[0])
-
-			second := strings.TrimSpace(keys[1])
-			//获取值
-			if validToken(second) {
-				keys[1] = fmt.Sprintf(`getValueByKey(ctx,"%s")`, second)
-			}
-			//赋值动作
-			if validToken(first) {
-				random := "a" + strconv.FormatInt(time.Now().UnixMilli(), 10)
-				placeholder = append(placeholder, consts.Pair[string, string]{random, keys[0]})
-				keys[0] = random
-				if !strings.HasPrefix(keys[0], "let") {
-					keys[0] = "let " + keys[0]
-				}
-			}
-			split[i] = strings.Join(keys, "=")
-
+			noSpaceLines[i] = replaceGetOrSetValue(s, placeholder)
 		}
 	}
 
-	script = strings.Join(split, "\n")
+	script = strings.Join(noSpaceLines, "\n")
 	for _, c := range placeholder {
 		script = strings.ReplaceAll(script, c.Second, c.First)
 	}
@@ -105,6 +102,48 @@ func replaceScript(script string) string {
 
 	log.Info().Msgf("替换后的脚本内容:%s", script)
 	return script
+}
+
+func replaceGetOrSetValue(s string, placeholder []consts.Pair[string, string]) string {
+	if strings.Contains(s, "=") {
+		keys := strings.Split(s, "=")
+		first := strings.TrimSpace(keys[0])
+		first = replaceGetOrSetValue(first, placeholder)
+		second := strings.TrimSpace(keys[1])
+		second = replaceGetOrSetValue(second, placeholder)
+		//获取值
+		if validToken(second) {
+			keys[1] = fmt.Sprintf(`getValueByKey(ctx,"%s")`, second)
+		}
+		//赋值动作
+		if validToken(first) {
+			random := "a" + strconv.FormatInt(time.Now().UnixMilli(), 10)
+			placeholder = append(placeholder, consts.Pair[string, string]{random, keys[0]})
+			keys[0] = random
+			if !strings.HasPrefix(keys[0], "let") {
+				keys[0] = "let " + keys[0]
+			}
+		}
+		return strings.Join(keys, "=")
+	} else if strings.Contains(s, ":") {
+		keys := strings.Split(s, ":")
+		//first := strings.TrimSpace(keys[0])
+		second := strings.TrimSpace(keys[1])
+		containsComman := strings.Contains(second, ",")
+		if containsComman {
+			second = strings.ReplaceAll(second, ",", "")
+		}
+
+		//获取值
+		if validToken(second) {
+			keys[1] = fmt.Sprintf(`getValueByKey(ctx,"%s")`, second)
+		}
+		if containsComman {
+			keys[1] = keys[1] + ","
+		}
+		return strings.Join(keys, ":")
+	}
+	return s
 }
 
 func validToken(content string) bool {
