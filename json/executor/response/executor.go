@@ -5,13 +5,16 @@ import (
 	"github.com/kuchensheng/bintools/json/consts"
 	"github.com/kuchensheng/bintools/json/executor/util"
 	"github.com/kuchensheng/bintools/json/model"
+	"github.com/rs/zerolog/log"
 )
 
 //BuildSuccessResponse 组装响应结果
 func BuildSuccessResponse(ctx *gin.Context, responses map[string]model.ApixResponse) (any, error) {
 	for s, response := range responses {
 		if s == "200" {
-			return readSchema(ctx, response.Schema), nil
+			schema := readSchema(ctx, response.Schema)
+			log.Info().Msgf("组装结果:%s", schema)
+			return schema, nil
 		}
 	}
 	return nil, nil

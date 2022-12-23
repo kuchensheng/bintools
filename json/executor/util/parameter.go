@@ -84,10 +84,10 @@ func getValue(resultMap map[string]any, prefix string, suffix []string) any {
 }
 
 func SetResultValue(ctx *gin.Context, key string, value any) {
-	if value == nil {
-		log.Info().Msgf("key = %s,value is nil，不进行任何动作", key)
-		return
-	}
+	//if value == nil {
+	//	log.Info().Msgf("key = %s,value is nil，不进行任何动作", key)
+	//	return
+	//}
 	//log.Info().Msgf("结果赋值,key=%s,value = %s", key, value)
 	if v, ok := ctx.Get(consts.RESULTMAP); ok {
 		data := value
@@ -109,7 +109,7 @@ func ReadByJsonPath(v []byte, express []string) (any, bool) {
 	var data interface{}
 	_ = json.Unmarshal(v, &data)
 	if res, err := jsonpath.Read(data, path); err != nil {
-		log.Warn().Msgf("无法从jsonPath中读取数据,%v", err)
+		//log.Warn().Msgf("无法从jsonPath中读取数据,%v", err)
 		return nil, false
 	} else {
 		log.Info().Msgf("读取到内容:%v", res)

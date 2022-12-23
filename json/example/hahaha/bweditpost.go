@@ -93,25 +93,27 @@ func Executorbweditpost(ctx *gin.Context) (any, error) {
 //executeStep 执行步骤
 func executeStep(ctx *gin.Context, PrevId string, sts []model.ApixStep) error {
 	defer deferHandler()
+	subList := func(parentId string) []model.ApixStep {
+		var result []model.ApixStep
+		for _, st := range sts {
+			if st.PrevId == parentId {
+				result = append(result, st)
+			}
+		}
+		return result
+	}
 
-	for _, step := range sts {
-		if step.PrevId == PrevId {
-			if err := runStep(step, ctx, stepMaps); err != nil {
-				return err
-			}
-		} else {
-			subList := func() []model.ApixStep {
-				var result []model.ApixStep
-				for _, st := range sts {
-					if st.PrevId == step.GraphId {
-						result = append(result, st)
-					}
-				}
-				return result
-			}()
-			if e := executeStep(ctx, step.GraphId, subList); e != nil {
-				return e
-			}
+	subSts := subList(PrevId)
+	if len(subSts) < 1 {
+		return nil
+	}
+	for _, step := range subSts {
+		if err := runStep(step, ctx, stepMaps); err != nil {
+			return err
+		}
+		//执行子节点
+		if err := executeStep(ctx, step.GraphId, sts); err != nil {
+			return err
 		}
 	}
 	return nil

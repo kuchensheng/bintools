@@ -8,6 +8,7 @@ import (
 	"github.com/kuchensheng/bintools/tracer/trace"
 	"github.com/rs/zerolog/log"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -44,7 +45,10 @@ func ExecPredicates(ctx *gin.Context, predicates []model.ApiStepPredicate, predi
 func compare(k, v any, op string) bool {
 	switch op {
 	case eq:
-		return false
+		return k == v
+	case inc:
+		return strings.Contains(k.(string), v.(string))
 	}
+
 	return true
 }
