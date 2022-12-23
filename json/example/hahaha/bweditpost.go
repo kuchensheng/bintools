@@ -2,10 +2,10 @@ package bweditpost
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/kuchensheng/bintools/json/consts"
+	"github.com/kuchensheng/bintools/json/executor/check"
 	"github.com/kuchensheng/bintools/json/executor/js"
 	"github.com/kuchensheng/bintools/json/executor/parameter"
 	"github.com/kuchensheng/bintools/json/executor/predicate"
@@ -61,9 +61,8 @@ func Executorbweditpost(ctx *gin.Context) (any, error) {
 		}
 	}()
 	log.Info().Msgf("当前请求:%s,Method:%s,执行文件:[bweditpost]", ctx.Request.URL.Path, ctx.Request.Method)
-	tId := ctx.GetHeader("isc-tenant-id")
-	if tenantId != tId {
-		return nil, errors.New("禁止操作：租户不匹配")
+	if err := check.CheckTenantId(ctx, tenantId); err != nil {
+		return nil, err
 	}
 	parameterMap := parameter.SetParameterMap(ctx)
 	log.Info().Msg("链路跟踪启动...")
@@ -79,16 +78,8 @@ func Executorbweditpost(ctx *gin.Context) (any, error) {
 	ctx.Set(consts.RESULTMAP, make(map[string]any))
 	ctx.Set(consts.TRACER, tracer)
 	//执行步骤
-	var rangeSteps = func() []model.ApixStep {
-		var result []model.ApixStep
-		for _, step := range steps {
-			result = append(result, step)
-		}
-		return result
-	}()
-
 	log.Info().Msgf("参数校验通过,开始执行逻辑流程")
-	if err := executeStep(ctx, "", rangeSteps); err != nil {
+	if err := executeStep(ctx, "", steps); err != nil {
 		log.Warn().Msgf("流程执行失败:%v", err)
 		tracer.EndServerTracer(trace.WARNING, err.Error())
 		return nil, err
@@ -136,22 +127,17 @@ func listToMap(steps []model.ApixStep) map[string]model.ApixStep {
 
 func runStep(step model.ApixStep, ctx *gin.Context, stepMap map[string]model.ApixStep) error {
 	log.Info().Msgf("执行步骤节点:%s", step.GraphId)
-	tracer, _ := ctx.Get(consts.TRACER)
 
 	if step.Language == "javascript" {
 		// 执行JS脚本内容
-		clientTracer := tracer.(*trace.ServerTracer).NewClientWithHeader(&ctx.Request.Header)
 		if result, e := js.ExecuteJavaScript(ctx, step.Script.Script, step.GraphId); e != nil {
-			clientTracer.EndTraceError(e)
 			return e
 		} else {
 			util.SetResultValue(ctx, fmt.Sprintf("%s%s%s", consts.KEY_TOKEN, step.GraphId, ".$resp.export"), result)
 		}
 	} else if step.Predicate != nil {
 		//执行判断逻辑
-		clientTracer := tracer.(*trace.ServerTracer).NewClientWithHeader(&ctx.Request.Header)
 		if ok, e := predicate.ExecPredicates(ctx, step.Predicate, step.PredicateType); e != nil {
-			clientTracer.EndTraceError(e)
 			return e
 		} else {
 			nextStep := stepMap[step.ThenGraphId]
@@ -159,7 +145,6 @@ func runStep(step model.ApixStep, ctx *gin.Context, stepMap map[string]model.Api
 				nextStep = stepMap[step.ElseGraphId]
 			}
 			if e = runStep(nextStep, ctx, stepMap); e != nil {
-				clientTracer.EndTraceError(e)
 				return e
 			}
 		}

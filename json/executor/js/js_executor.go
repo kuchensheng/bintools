@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/kuchensheng/bintools/json/consts"
 	"github.com/kuchensheng/bintools/json/executor/util"
+	"github.com/kuchensheng/bintools/tracer/trace"
 	"github.com/rs/zerolog/log"
 	"strconv"
 	"strings"
@@ -30,12 +31,23 @@ var scriptEnginFunc = func(context *gin.Context) *goja.Runtime {
 
 //ExecuteJavaScript 执行JS脚本,返回执行结果或者错误信息
 func ExecuteJavaScript(ctx *gin.Context, script, name string) (any, error) {
+	tracer, _ := ctx.Get(consts.TRACER)
+	clientTracer := tracer.(*trace.ServerTracer).NewClientWithHeader(&ctx.Request.Header)
+	clientTracer.TraceName = "执行脚本节点:" + name
+	defer func() {
+		if x := recover(); x != nil {
+			log.Error().Msgf("JS脚本执行异常，panic is :%v", x)
+			clientTracer.EndTraceError(x.(error))
+		}
+	}()
 	//初始化JS引擎
 	scriptEngine := scriptEnginFunc(ctx)
 	script = replaceScript(script)
 	if v, err := scriptEngine.RunString(script); err != nil {
+		clientTracer.EndTraceError(err)
 		return nil, err
 	} else {
+		clientTracer.EndTraceOk()
 		return v.Export(), nil
 	}
 }

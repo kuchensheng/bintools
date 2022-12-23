@@ -70,3 +70,7 @@ const (
 	OBJECT = "object"
 	ARRAY  = "array"
 )
+
+const (
+	TENANT_ID = "isc-tenant-id"
+)

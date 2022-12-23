@@ -64,9 +64,8 @@ func Executor{{.Key }}(ctx *gin.Context) (any, error) {
 		}
 	}()
 	log.Info().Msgf("当前请求:%s,Method:%s,执行文件:[{{ .Key }}]", ctx.Request.URL.Path, ctx.Request.Method)
-	tId := ctx.GetHeader("isc-tenant-id")
-    if (tenantId != tId) {
-        return nil,errors.New("禁止操作：租户不匹配")
+	if err := check.CheckTenantId(ctx,tenantId);err != nil {
+        return nil,err
     }
     parameterMap := parameter.SetParameterMap(ctx)
 	log.Info().Msg("链路跟踪启动...")
@@ -82,16 +81,8 @@ func Executor{{.Key }}(ctx *gin.Context) (any, error) {
 	ctx.Set(consts.RESULTMAP, make(map[string]any))
 	ctx.Set(consts.TRACER, tracer)
 	//执行步骤
-    var rangeSteps = func() []model.ApixStep{
-        var result []model.ApixStep
-    	for _, step := range steps {
-    		result = append(result, step)
-    	}
-    	return result
-    }()
-
     log.Info().Msgf("参数校验通过,开始执行逻辑流程")
-	if err := executeStep(ctx, "", rangeSteps); err != nil {
+	if err := executeStep(ctx, "", steps); err != nil {
 		log.Warn().Msgf("流程执行失败:%v", err)
 		tracer.EndServerTracer(trace.WARNING, err.Error())
 		return nil, err
@@ -142,31 +133,25 @@ func runStep(step model.ApixStep, ctx *gin.Context, stepMap map[string]model.Api
 	tracer, _ := ctx.Get(consts.TRACER)
 
 	if step.Language == "javascript" {
-		// 执行JS脚本内容
-		clientTracer := tracer.(*trace.ServerTracer).NewClientWithHeader(&ctx.Request.Header)
-		if result, e := js.ExecuteJavaScript(ctx,step.Script.Script, step.GraphId); e != nil {
-			clientTracer.EndTraceError(e)
-			return e
-		} else {
-			v, _ := ctx.Get(consts.RESULTMAP)
-			v.(map[string]any)[fmt.Sprintf("%s%s%s", consts.KEY_TOKEN, step.GraphId, ".$resp.export")] = result
-		}
+	    // 执行JS脚本内容
+    	if result, e := js.ExecuteJavaScript(ctx, step.Script.Script, step.GraphId); e != nil {
+    		return e
+    	} else {
+    		util.SetResultValue(ctx, fmt.Sprintf("%s%s%s", consts.KEY_TOKEN, step.GraphId, ".$resp.export"), result)
+    	}
 	} else if step.Predicate != nil {
-		//执行判断逻辑
-		clientTracer := tracer.(*trace.ServerTracer).NewClientWithHeader(&ctx.Request.Header)
-		if ok, e := predicate.ExecPredicates(ctx, step.Predicate, step.PredicateType); e != nil {
-			clientTracer.EndTraceError(e)
-			return e
-		} else {
-			nextStep := stepMap[step.ThenGraphId]
-			if !ok {
-				nextStep = stepMap[step.ElseGraphId]
-			}
-			if e = runStep(nextStep, ctx, stepMap); e != nil {
-				clientTracer.EndTraceError(e)
-				return e
-			}
-		}
+	    //执行判断逻辑
+    	if ok, e := predicate.ExecPredicates(ctx, step.Predicate, step.PredicateType); e != nil {
+    		return e
+    	} else {
+    		nextStep := stepMap[step.ThenGraphId]
+    		if !ok {
+    			nextStep = stepMap[step.ElseGraphId]
+    		}
+    		if e = runStep(nextStep, ctx, stepMap); e != nil {
+    			return e
+    		}
+    	}
 	} else {
 		//执行普通的服务请求
         if e := server.ExecServer(ctx, step); e != nil {
