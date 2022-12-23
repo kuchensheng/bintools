@@ -34,6 +34,7 @@ func init() {
 		"OBJECT":            reflect.ValueOf(constant.MakeFromLiteral("\"object\"", token.STRING, 0)),
 		"PARAMETERMAP":      reflect.ValueOf(constant.MakeFromLiteral("\"parameterMap\"", token.STRING, 0)),
 		"RESULTMAP":         reflect.ValueOf(constant.MakeFromLiteral("\"resultMap\"", token.STRING, 0)),
+		"TENANT_ID":         reflect.ValueOf(constant.MakeFromLiteral("\"isc-tenant-id\"", token.STRING, 0)),
 		"TRACER":            reflect.ValueOf(constant.MakeFromLiteral("\"tracer\"", token.STRING, 0)),
 	}
 }

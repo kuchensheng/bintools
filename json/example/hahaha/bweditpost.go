@@ -2,6 +2,7 @@ package bweditpost
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/kuchensheng/bintools/json/consts"

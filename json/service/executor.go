@@ -9,6 +9,7 @@ import (
 	"github.com/traefik/yaegi/stdlib"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 	"time"
 )
@@ -30,7 +31,7 @@ func Compile(path string) error {
 		return e
 	} else {
 		key = f.Name()
-		key = strings.ReplaceAll(key, ".go_", "")
+		key = strings.ReplaceAll(key, ".go", "")
 	}
 
 	log.Info().Msgf("编译文件:%s,key=%s", path, key)
@@ -47,6 +48,12 @@ func Compile(path string) error {
 }
 
 func Execute(context *gin.Context) (any, error) {
+	defer func() {
+		if x := recover(); x != nil {
+			log.Error().Msgf("请求执行异常，panic:%v", x)
+			fmt.Sprintf("%s\n", debug.Stack())
+		}
+	}()
 	//执行go脚本
 	pk := getPackage(context)
 	scriptPath := readGoScript(context, pk)
@@ -70,6 +77,7 @@ func Execute(context *gin.Context) (any, error) {
 			log.Warn().Msgf("编译比较耗时，不建议等待")
 			return nil, errors.New("正在执行脚本初始化，请稍后再试")
 		}
+		scriptEngine, _ = programMap[pk]
 		log.Info().Msgf("脚本编译完成")
 	}
 	if v, e := scriptEngine.Eval(fmt.Sprintf("%s.%s%s", pk, "Executor", pk)); e != nil {

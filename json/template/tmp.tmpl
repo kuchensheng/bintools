@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/kuchensheng/bintools/json/consts"
+	"github.com/kuchensheng/bintools/json/executor/check"
 	"github.com/kuchensheng/bintools/json/executor/js"
 	"github.com/kuchensheng/bintools/json/executor/parameter"
 	"github.com/kuchensheng/bintools/json/executor/predicate"
 	"github.com/kuchensheng/bintools/json/executor/server"
 	"github.com/kuchensheng/bintools/json/executor/response"
+	"github.com/kuchensheng/bintools/json/executor/util"
 	"github.com/kuchensheng/bintools/json/model"
 	"github.com/kuchensheng/bintools/tracer/trace"
 	"github.com/rs/zerolog/log"
@@ -132,7 +134,6 @@ func listToMap(steps []model.ApixStep) map[string]model.ApixStep {
 
 func runStep(step model.ApixStep, ctx *gin.Context, stepMap map[string]model.ApixStep) error {
 	log.Info().Msgf("执行步骤节点:%s", step.GraphId)
-	tracer, _ := ctx.Get(consts.TRACER)
 
 	if step.Language == "javascript" {
 	    // 执行JS脚本内容

@@ -57,6 +57,8 @@ func init() {
 		"TIMEOUT":                   reflect.ValueOf(trace.TIMEOUT),
 		"T_HEADER_RPCID":            reflect.ValueOf(constant.MakeFromLiteral("\"T-Head-Rpcid\"", token.STRING, 0)),
 		"T_HEADER_TRACEID":          reflect.ValueOf(constant.MakeFromLiteral("\"T-Head-TraceId\"", token.STRING, 0)),
+		"T_RESULT_CODE":             reflect.ValueOf(constant.MakeFromLiteral("\"T-RESULT-CODE\"", token.STRING, 0)),
+		"T_RESULT_MSG":              reflect.ValueOf(constant.MakeFromLiteral("\"T-RESULT-MSG\"", token.STRING, 0)),
 		"WARNING":                   reflect.ValueOf(trace.WARNING),
 		"ZOOKEEPER":                 reflect.ValueOf(trace.ZOOKEEPER),
 
