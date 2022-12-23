@@ -2,43 +2,38 @@ package consts
 
 import (
 	"github.com/patrickmn/go-cache"
-	"github.com/rs/zerolog/log"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	"strings"
 	"time"
 )
 
 var Cache = cache.New(time.Minute, 30*time.Second)
 
-func init() {
-	//删除文件
-	go func() {
-		ticker := time.NewTicker(time.Minute)
-		for {
-			select {
-			case <-ticker.C:
-				getwd, _ := os.Getwd()
-
-				if globs, err := ioutil.ReadDir(filepath.Join(getwd, "scripts")); err != nil {
-					log.Error().Msgf("获取js文件列表失败,%v", err)
-				} else {
-					for _, glob := range globs {
-						key := strings.ReplaceAll(glob.Name(), ".js", "")
-						if _, ok := Cache.Get(key); !ok {
-							fp := filepath.Join(getwd, "scripts", glob.Name())
-							log.Info().Msgf("删除文件：%s", fp)
-							_ = os.Remove(fp)
-						}
-					}
-				}
-			case <-time.After(time.Second * 30):
-				continue
-			}
-		}
-	}()
-}
+//func init() {
+//	//删除文件
+//	go func() {
+//		ticker := time.NewTicker(time.Minute)
+//		for {
+//			select {
+//			case <-ticker.C:
+//				getwd, _ := os.Getwd()
+//
+//				if globs, err := ioutil.ReadDir(filepath.Join(getwd, "scripts")); err != nil {
+//					log.Error().Msgf("获取js文件列表失败,%v", err)
+//				} else {
+//					for _, glob := range globs {
+//						key := strings.ReplaceAll(glob.Name(), ".js", "")
+//						if _, ok := Cache.Get(key); !ok {
+//							fp := filepath.Join(getwd, "scripts", glob.Name())
+//							log.Info().Msgf("删除文件：%s", fp)
+//							_ = os.Remove(fp)
+//						}
+//					}
+//				}
+//			case <-time.After(time.Second * 30):
+//				continue
+//			}
+//		}
+//	}()
+//}
 
 const (
 	KEY_TOKEN         = "$"
