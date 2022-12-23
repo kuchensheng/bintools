@@ -85,7 +85,7 @@ func getValue(resultMap map[string]any, prefix string, suffix []string) any {
 
 func SetResultValue(ctx *gin.Context, key string, value any) {
 	if value == nil {
-		log.Info().Msgf("value is nil，不进行任何动作")
+		log.Info().Msgf("key = %s,value is nil，不进行任何动作", key)
 		return
 	}
 	//log.Info().Msgf("结果赋值,key=%s,value = %s", key, value)

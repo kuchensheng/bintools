@@ -17,10 +17,11 @@ import (
 var scriptEnginFunc = func(context *gin.Context) *goja.Runtime {
 	scriptEngine := goja.New()
 	scriptEngine.Set("ctx", context)
-	scriptEngine.Set("getValueByKey", func(ctx *gin.Context, key string) string {
+	scriptEngine.Set("getValueByKey", func(ctx *gin.Context, key string) any {
 		value := util.GetContextValue(ctx, key)
+		log.Info().Msgf("获取键=%s的值：%v", key, value)
 		if value != nil {
-			return value.(string)
+			return value
 		}
 		return ""
 	})
@@ -77,14 +78,14 @@ func replaceScript(script string) string {
 			sb := strings.Builder{}
 			for _, c := range placeholder {
 				sb.WriteString("\n")
-				sb.WriteString(fmt.Sprintf(`setValueByKey(ctx,"%s",%v)`, c.Second, c.First))
+				sb.WriteString(fmt.Sprintf(`setValueByKey(ctx,"%s",%v)`, strings.TrimSpace(c.Second), c.First))
 			}
 			split[i] = fmt.Sprintf("%s\n%s\n", s, sb.String())
 			placeholder = nil
 		}
 
 		if validToken(s) {
-			noSpaceLines[i] = replaceGetOrSetValue(s, placeholder)
+			noSpaceLines[i], placeholder = replaceGetOrSetValue(s, placeholder)
 		}
 	}
 
@@ -96,7 +97,7 @@ func replaceScript(script string) string {
 	sb.Write([]byte(script))
 	for _, c := range placeholder {
 		sb.WriteString("\n")
-		sb.WriteString(fmt.Sprintf(`setValueByKey(ctx,"%s",%v)`, c.Second, c.First))
+		sb.WriteString(fmt.Sprintf(`setValueByKey(ctx,"%s",%v)`, strings.TrimSpace(c.Second), c.First))
 	}
 	script = sb.String()
 
@@ -104,13 +105,13 @@ func replaceScript(script string) string {
 	return script
 }
 
-func replaceGetOrSetValue(s string, placeholder []consts.Pair[string, string]) string {
+func replaceGetOrSetValue(s string, placeholder []consts.Pair[string, string]) (string, []consts.Pair[string, string]) {
 	if strings.Contains(s, "=") {
 		keys := strings.Split(s, "=")
 		first := strings.TrimSpace(keys[0])
-		first = replaceGetOrSetValue(first, placeholder)
+		first, placeholder = replaceGetOrSetValue(first, placeholder)
 		second := strings.TrimSpace(keys[1])
-		second = replaceGetOrSetValue(second, placeholder)
+		second, placeholder = replaceGetOrSetValue(second, placeholder)
 		//获取值
 		if validToken(second) {
 			keys[1] = fmt.Sprintf(`getValueByKey(ctx,"%s")`, second)
@@ -124,7 +125,7 @@ func replaceGetOrSetValue(s string, placeholder []consts.Pair[string, string]) s
 				keys[0] = "let " + keys[0]
 			}
 		}
-		return strings.Join(keys, "=")
+		return strings.Join(keys, "="), placeholder
 	} else if strings.Contains(s, ":") {
 		keys := strings.Split(s, ":")
 		//first := strings.TrimSpace(keys[0])
@@ -141,9 +142,9 @@ func replaceGetOrSetValue(s string, placeholder []consts.Pair[string, string]) s
 		if containsComman {
 			keys[1] = keys[1] + ","
 		}
-		return strings.Join(keys, ":")
+		return strings.Join(keys, ":"), placeholder
 	}
-	return s
+	return s, placeholder
 }
 
 func validToken(content string) bool {

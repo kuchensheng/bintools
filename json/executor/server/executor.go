@@ -30,7 +30,7 @@ func ExecServer(ctx *gin.Context, step model.ApixStep) error {
 			log.Warn().Msgf("服务节点执行失败,%v", err1)
 			return consts.NewException(step.GraphId, "", err1.Error())
 		} else {
-			util.SetResultValue(ctx, fmt.Sprintf("%s%s%s", consts.KEY_TOKEN, step.GraphId, ".$resp.export"), result)
+			util.SetResultValue(ctx, fmt.Sprintf("%s%s%s", consts.KEY_TOKEN, step.GraphId, ".$resp.data"), result)
 			return nil
 		}
 	}
