@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"github.com/gin-gonic/gin"
+	"github.com/kuchensheng/bintools/json/consts"
 	"github.com/kuchensheng/bintools/json/model"
 	"github.com/kuchensheng/bintools/json/service"
 	"github.com/rs/zerolog"
@@ -30,14 +31,14 @@ func main() {
 	router := gin.Default()
 	router.POST("/api/app/orc-server/build", func(context *gin.Context) {
 		data, _ := context.GetRawData()
-		tenantId := context.GetHeader("isc-tenant-id")
+		tenantId := context.GetHeader(consts.TENANT_ID)
 		if _, err := service.BuildJson(data, tenantId); err != nil {
 			context.JSON(400, model.NewBusinessException(1080500, err.Error()))
 
 		}
 	})
 	router.POST("/api/app/orc-server/build/file", func(context *gin.Context) {
-		tenantId := context.GetHeader("isc-tenant-id")
+		tenantId := context.GetHeader(consts.TENANT_ID)
 		if file, err := context.FormFile("file"); err != nil {
 			log.Error().Msgf("无法读取文件,key=file,%v", err)
 			context.JSON(400, model.NewBusinessException(1080500, err.Error()))

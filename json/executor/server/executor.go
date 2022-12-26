@@ -69,7 +69,7 @@ func buildRequest(ctx *gin.Context, step model.ApixStep) (*http.Request, error) 
 				body := make(map[string]any)
 				for _, property := range schema.Properties {
 					if v := util.GetBodyParameterValue(ctx, property.Default); v != nil {
-						body[property.Name] = util.GetBodyParameterValue(ctx, property.Default)
+						body[property.Name] = v
 					}
 				}
 				data, _ := json.Marshal(body)

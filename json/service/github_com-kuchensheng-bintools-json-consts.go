@@ -14,6 +14,7 @@ func init() {
 		// function, constant and variable definitions
 		"ARRAY":             reflect.ValueOf(constant.MakeFromLiteral("\"array\"", token.STRING, 0)),
 		"Cache":             reflect.ValueOf(&consts.Cache).Elem(),
+		"DeferHandler":      reflect.ValueOf(consts.DeferHandler),
 		"KEY_BODY":          reflect.ValueOf(constant.MakeFromLiteral("\"body\"", token.STRING, 0)),
 		"KEY_COOKIE":        reflect.ValueOf(constant.MakeFromLiteral("\"cookie\"", token.STRING, 0)),
 		"KEY_DATA":          reflect.ValueOf(constant.MakeFromLiteral("\"data\"", token.STRING, 0)),

@@ -2,11 +2,13 @@ package util
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/kuchensheng/bintools/json/consts"
 	"github.com/rs/zerolog/log"
 	"github.com/yalp/jsonpath"
 	"reflect"
+	"runtime/debug"
 	"strings"
 )
 
@@ -24,6 +26,12 @@ func GetContextValue(ctx *gin.Context, key string) any {
 }
 
 func GetBodyParameterValue(ctx *gin.Context, key string) any {
+	defer func() {
+		if x := recover(); x != nil {
+			log.Error().Msgf("读取请求体参数时异常,%v", x.(error))
+			fmt.Printf("%s\n", debug.Stack())
+		}
+	}()
 	if v, ok := ctx.Get(consts.PARAMETERMAP); !ok {
 		return nil
 	} else if body, existed := v.(map[string]any)[consts.KEY_REQ_BODY]; existed {
@@ -31,7 +39,11 @@ func GetBodyParameterValue(ctx *gin.Context, key string) any {
 			return body
 		}
 		split := strings.Split(key, consts.KEY_REQ_CONNECTOR)
-		if result, ok1 := ReadByJsonPath(body.([]byte), split[2:]); ok1 {
+		var express []string
+		if len(split) > 2 {
+			express = split[2:]
+		}
+		if result, ok1 := ReadByJsonPath(body.([]byte), express); ok1 {
 			return result
 		}
 	}
