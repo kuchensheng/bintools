@@ -2,7 +2,6 @@ package bweditpost
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/kuchensheng/bintools/json/consts"
 	"github.com/kuchensheng/bintools/json/executor/check"
@@ -11,7 +10,6 @@ import (
 	"github.com/kuchensheng/bintools/json/executor/predicate"
 	"github.com/kuchensheng/bintools/json/executor/response"
 	"github.com/kuchensheng/bintools/json/executor/server"
-	"github.com/kuchensheng/bintools/json/executor/util"
 	"github.com/kuchensheng/bintools/json/model"
 	"github.com/kuchensheng/bintools/tracer/trace"
 	"github.com/rs/zerolog/log"
@@ -136,10 +134,8 @@ func runStep(step model.ApixStep, ctx *gin.Context, stepMap map[string]model.Api
 
 	if step.Language == "javascript" {
 		// 执行JS脚本内容
-		if result, e := js.ExecuteJavaScript(ctx, step.Script.Script, step.GraphId); e != nil {
+		if e := js.ExecuteJavaScript(ctx, step.Script.Script, step.GraphId); e != nil {
 			return e
-		} else {
-			util.SetResultValue(ctx, fmt.Sprintf("%s%s%s", consts.KEY_TOKEN, step.GraphId, ".$resp.export"), result)
 		}
 	} else if step.Predicate != nil {
 		//执行判断逻辑

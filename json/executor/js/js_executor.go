@@ -36,7 +36,7 @@ var scriptEnginFunc = func(context *gin.Context) *goja.Runtime {
 }
 
 //ExecuteJavaScript 执行JS脚本,返回执行结果或者错误信息
-func ExecuteJavaScript(ctx *gin.Context, script, name string) (any, error) {
+func ExecuteJavaScript(ctx *gin.Context, script, name string) error {
 	tracer, _ := ctx.Get(consts.TRACER)
 	clientTracer := tracer.(*trace.ServerTracer).NewClientWithHeader(&ctx.Request.Header)
 	clientTracer.TraceName = "执行脚本节点:" + name
@@ -52,13 +52,17 @@ func ExecuteJavaScript(ctx *gin.Context, script, name string) (any, error) {
 	script = replaceScript(script)
 	if v, err := scriptEngine.RunString(script); err != nil {
 		clientTracer.EndTraceError(err)
-		return nil, err
+		return err
 	} else {
 		clientTracer.EndTraceOk()
+		var result any
 		if v != nil || v.ExportType() != nil {
-			return v.Export(), nil
+			result = v.Export()
+		} else {
+			result = v.String()
 		}
-		return v.String(), nil
+		util.SetResultValue(ctx, fmt.Sprintf("%s%s%s", consts.KEY_TOKEN, name, ".$resp.export"), result)
+		return nil
 	}
 }
 
