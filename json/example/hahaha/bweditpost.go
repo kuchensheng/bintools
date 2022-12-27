@@ -87,10 +87,6 @@ func Executorbweditpost(ctx *gin.Context) (any, error) {
 
 }
 
-func executeAll(ctx *gin.Context) error {
-	return nil
-}
-
 //todo 下个迭代，这里将直接用模板生成执行代码，而不是先解析再执行
 //executeStep 执行步骤
 func executeStep(ctx *gin.Context, PrevId string, sts []model.ApixStep) error {
