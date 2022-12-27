@@ -1,7 +1,6 @@
 package {{ .Key }}
 
 import (
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/kuchensheng/bintools/json/consts"
 	"github.com/kuchensheng/bintools/json/executor/check"
@@ -10,7 +9,6 @@ import (
 	"github.com/kuchensheng/bintools/json/executor/predicate"
 	"github.com/kuchensheng/bintools/json/executor/server"
 	"github.com/kuchensheng/bintools/json/executor/response"
-	"github.com/kuchensheng/bintools/json/executor/util"
 	"github.com/kuchensheng/bintools/json/model"
 	"github.com/kuchensheng/bintools/tracer/trace"
 	"github.com/rs/zerolog/log"
