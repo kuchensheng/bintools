@@ -4,6 +4,7 @@ import (
 	"flag"
 	"github.com/gin-gonic/gin"
 	"github.com/kuchensheng/bintools/json/consts"
+	"github.com/kuchensheng/bintools/json/lib"
 	"github.com/kuchensheng/bintools/json/model"
 	"github.com/kuchensheng/bintools/json/service"
 	"github.com/rs/zerolog"
@@ -24,7 +25,7 @@ func main() {
 	goPath := flag.String("go_path", "", "Go编译环境地址")
 	flag.Parse()
 	if *goPath != "" {
-		service.GoPath = *goPath
+		lib.GoPath = *goPath
 	}
 	log.Logger = log.Logger.Level(zerolog.InfoLevel)
 	wd, _ := os.Getwd()

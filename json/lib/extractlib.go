@@ -11,7 +11,7 @@
 //go:generate yaegi extract "github.com/kuchensheng/bintools/json/executor/util"
 //go:generate yaegi extract "github.com/kuchensheng/bintools/json/executor/check"
 
-package service
+package lib
 
 import "reflect"
 

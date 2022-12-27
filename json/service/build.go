@@ -12,5 +12,10 @@ func BuildJsonFile(filePath, tenantId string) (string, error) {
 }
 
 func BuildJson(content []byte, tenantId string) (string, error) {
-	return model.GenerateJson2Go(content, tenantId)
+	if goFile, err := model.GenerateJson2Go(content, tenantId); err != nil {
+		return "", err
+	} else {
+		go Compile(goFile)
+		return goFile, err
+	}
 }
