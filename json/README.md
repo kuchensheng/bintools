@@ -4,6 +4,7 @@
 1. 将json文件按照既定语法解释为Go语法，并写为Go文件
 2. 将Go文件内容作为脚本，进行编译、解释与执行
 3. 根据结果定义对结果进行组装
+4. 支持增量编译json文件，支持直接运行javascript脚本和Go代码
 
 # 2 介绍
 ## 2.1 包结构介绍
@@ -94,4 +95,48 @@ curl --location --request POST 'http://localhost:38240/api/app/orc/bw/edit?test_
 {"level":"info","time":"2022-12-16T18:35:16+08:00","message":"替换后的脚本内容:let a1671186916684.......}
 ...
 {"level":"info","time":"2022-12-16T18:35:16+08:00","message":"流程步骤执行完毕，开始组装结果映射..."}
+```
+### 2.2.3 删除某次编译
+```text
+curl --location --request DELETE 'http://localhost:38240/api/app/orc-server/build/file?api=/api/app/orc/bw/edit&method=post&json=test.json' \
+--header 'isc-tenant-id: hahaha' \
+```
+
+### 2.2.4 直接运行脚本内容
+1. 运行JavaScript脚本
+```text
+curl --location --request POST 'http://localhost:38240/api/app/orc-server/runner' \
+--header 'User-Agent: apifox/1.0.0 (https://www.apifox.cn)' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "script": "let a = 2 \n a",
+    "language": "javascript"
+}'
+```
+响应内容：
+```text
+{
+    "code": 0,
+    "message": "成功",
+    "data": 2
+}
+```
+2. 运行Go代码
+```text
+curl --location --request POST 'http://localhost:38240/api/app/orc-server/runner' \
+--header 'User-Agent: apifox/1.0.0 (https://www.apifox.cn)' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "script": "func MyTest(args ...any) any {\n\t return \"你好老库\"}",
+    "language": "go",
+    "method":"MyTest"
+}'
+```
+响应内容
+```text
+{
+    "code": 0,
+    "message": "成功",
+    "data": "你好老库"
+}
 ```
