@@ -20,7 +20,6 @@ require (
 	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
 	github.com/goccy/go-json v0.9.11 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
-	github.com/kuchensheng/bintools v0.0.4 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.16 // indirect
