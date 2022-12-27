@@ -7,6 +7,10 @@ import (
 
 var Cache = cache.New(time.Minute, 30*time.Second)
 
+var GlobalPrefix = "/api/app/orc/"
+
+const GlobalTemplate = "tmp.tmpl"
+
 //func init() {
 //	//删除文件
 //	go func() {

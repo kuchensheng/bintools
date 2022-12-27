@@ -31,6 +31,12 @@ func GetProgramMap(key string) (v *interp.Interpreter, ok bool) {
 	return
 }
 
+func RemoveProgramMap(key string) {
+	lock.Lock()
+	defer lock.Unlock()
+	delete(programMap, key)
+}
+
 var ScriptEngineFunc = func() *interp.Interpreter {
 	i := interp.New(interp.Options{GoPath: GoPath})
 	i.Use(stdlib.Symbols)

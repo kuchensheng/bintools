@@ -2,6 +2,8 @@ package model
 
 import (
 	"encoding/json"
+	"github.com/kuchensheng/bintools/json/consts"
+	"github.com/kuchensheng/bintools/json/lib"
 	"github.com/rs/zerolog/log"
 	"os"
 	"path"
@@ -10,8 +12,6 @@ import (
 	"strings"
 	"text/template"
 )
-
-const PLUGIN_PATH = "plugins"
 
 type templateParam struct {
 	ApixPath       string `json:"apixPath"`
@@ -46,14 +46,12 @@ func GenerateFile2Go(fileName, tenantId string) (string, error) {
 func generateGo(data ApixData, tenantId string) (string, error) {
 	log.Info().Msgf("apixData对象解析成go源码")
 
-	key := getKey(data.Rule.Api)
-	tmpl, err := getTemplate(key)
+	pk := getKey(data.Rule.Api)
+	tmpl, err := getTemplate(pk)
 	if err != nil {
 		log.Error().Msgf("无法解析模板,%v", err)
 		return "", err
 	}
-	pk := strings.ReplaceAll(key, "_api_app_orc_", "")
-	pk = strings.ReplaceAll(pk, "_", "")
 	tp := templateParam{
 		ApixPath:       data.Rule.Api.Path,
 		ApixParameters: obj2ByteArray(data.Rule.Api.Parameters),
@@ -98,9 +96,7 @@ func createGoFile(goFilePath string) (*os.File, error) {
 func getTemplate(key string) (*template.Template, error) {
 	t := template.New(key)
 	templateData := func() string {
-		wd, _ := os.Getwd()
-		tmplateName := "tmp.tmpl"
-		filePath := path.Join(wd, "template", tmplateName)
+		filePath := path.Join(lib.Wd, "template", consts.GlobalTemplate)
 		if data, err := os.ReadFile(filePath); err != nil {
 			log.Error().Msgf("无法读取模板内容，%v", err)
 			return ""
@@ -112,18 +108,15 @@ func getTemplate(key string) (*template.Template, error) {
 }
 
 func getKey(api ApixApi) string {
-	key := api.Code
-	if key == "" || len(key) == 0 {
-		method := api.Method
-		if method == "" || len(method) == 0 {
-			method = "get"
-		} else {
-			method = strings.ToLower(method)
-		}
-		key = strings.Join([]string{api.Path, method, api.Version}, "_")
-		key = strings.ReplaceAll(key, "/", "_")
+	method := api.Method
+	if method == "" || len(method) == 0 {
+		method = "get"
+	} else {
+		method = strings.ToLower(method)
 	}
-	return key
+	key := strings.ReplaceAll(api.Path, consts.GlobalPrefix, "")
+	key = strings.ReplaceAll(key, "/", "")
+	return key + method
 }
 
 func obj2ByteArray(obj any) string {

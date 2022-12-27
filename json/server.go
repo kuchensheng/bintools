@@ -20,12 +20,15 @@ const defaultMultipartMemory = 2 << 20 // 32 MB
 
 func main() {
 	//启动http服务，承接请求
-	relativePath := flag.String("context_path", "/api/app/orc/*action", "请求路径前缀")
+	relativePath := flag.String("context_path", "/api/app/orc/", "请求路径前缀")
 	serverPort := flag.Int("port", 38240, "服务器端口，默认:38240")
 	goPath := flag.String("go_path", "", "Go编译环境地址")
 	flag.Parse()
 	if *goPath != "" {
 		lib.GoPath = *goPath
+	}
+	if *relativePath != consts.GlobalPrefix {
+		consts.GlobalPrefix = *relativePath
 	}
 	log.Logger = log.Logger.Level(zerolog.InfoLevel)
 	wd, _ := os.Getwd()
@@ -71,7 +74,21 @@ func main() {
 			context.JSON(200, model.NewBusinessException(0, "构建成功"))
 		}
 	})
-	router.Any(*relativePath, func(context *gin.Context) {
+	router.DELETE("/api/app/orc-server/build/file", func(context *gin.Context) {
+		tenantId := context.GetHeader(consts.TENANT_ID)
+		if path, ok := context.GetQuery("api"); !ok {
+			context.JSON(http.StatusBadRequest, model.NewBusinessException(1080500, "缺少query必填参数api,示例：?api=/api/app/orc/bw/edit"))
+			return
+		} else if method, ok := context.GetQuery("method"); !ok {
+			context.JSON(http.StatusBadRequest, model.NewBusinessException(1080500, "缺少query必填参数api,示例：?method=post"))
+			return
+		} else {
+			json, _ := context.GetQuery("json")
+			context.JSON(service.Remove(tenantId, path, method, json))
+			return
+		}
+	})
+	router.Any(*relativePath+"*action", func(context *gin.Context) {
 		ch := make(chan error, 1)
 		var result any
 		go func(channel chan error, ctx *gin.Context) {
