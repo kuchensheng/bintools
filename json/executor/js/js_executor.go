@@ -38,6 +38,10 @@ var scriptEnginFunc = func(context *gin.Context) *goja.Runtime {
 //ExecuteJavaScript 执行JS脚本,返回执行结果或者错误信息
 func ExecuteJavaScript(ctx *gin.Context, script, name string) error {
 	tracer, _ := ctx.Get(consts.TRACER)
+	if tracer == nil {
+		tracer = trace.NewServerTracer(ctx.Request)
+		ctx.Set(consts.TRACER, tracer)
+	}
 	clientTracer := tracer.(*trace.ServerTracer).NewClientWithHeader(&ctx.Request.Header)
 	clientTracer.TraceName = "执行脚本节点:" + name
 	defer func() {

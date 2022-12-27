@@ -3,7 +3,6 @@ package model
 import (
 	"encoding/json"
 	"github.com/kuchensheng/bintools/json/consts"
-	"github.com/kuchensheng/bintools/json/lib"
 	"github.com/rs/zerolog/log"
 	"os"
 	"path"
@@ -96,7 +95,8 @@ func createGoFile(goFilePath string) (*os.File, error) {
 func getTemplate(key string) (*template.Template, error) {
 	t := template.New(key)
 	templateData := func() string {
-		filePath := path.Join(lib.Wd, "template", consts.GlobalTemplate)
+		wd, _ := os.Getwd()
+		filePath := path.Join(wd, "template", consts.GlobalTemplate)
 		if data, err := os.ReadFile(filePath); err != nil {
 			log.Error().Msgf("无法读取模板内容，%v", err)
 			return ""
