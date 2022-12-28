@@ -5,6 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/kuchensheng/bintools/json/consts"
 	"github.com/kuchensheng/bintools/json/lib"
+	"github.com/kuchensheng/bintools/json/register"
 	"github.com/kuchensheng/bintools/json/service"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -20,6 +21,7 @@ func main() {
 	relativePath := flag.String("context_path", "/api/app/orc/", "请求路径前缀")
 	serverPort := flag.Int("port", 38240, "服务器端口，默认:38240")
 	goPath := flag.String("go_path", "", "Go编译环境地址")
+	routeHost := flag.String("route_host", "", "路由服务地址，默认:http://isc-route-service:31000")
 	flag.Parse()
 	if *goPath != "" {
 		lib.GoPath = *goPath
@@ -27,6 +29,11 @@ func main() {
 	if *relativePath != consts.GlobalPrefix {
 		consts.GlobalPrefix = *relativePath
 	}
+	if *routeHost != "" {
+		register.RouteHost = *routeHost
+	}
+	go register.InitRoute()
+
 	log.Logger = log.Logger.Level(zerolog.InfoLevel)
 	wd, _ := os.Getwd()
 	router := gin.Default()
