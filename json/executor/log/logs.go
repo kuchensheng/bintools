@@ -36,7 +36,7 @@ func (p LogStruct) Error(msg string, args ...any) {
 }
 
 func buildMsg(level, msg string, p LogStruct, args ...any) string {
-	_, f, line, _ := runtime.Caller(2)
+	_, f, line, _ := runtime.Caller(3)
 	if !(len(args) == 1 && reflect.ValueOf(args[0].([]any)[0]).Len() == 0) {
 		msg = fmt.Sprintf(msg, args[0].([]any)[0].([]any)...)
 	}
