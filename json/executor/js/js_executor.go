@@ -5,7 +5,9 @@ import (
 	"github.com/dop251/goja"
 	"github.com/gin-gonic/gin"
 	"github.com/kuchensheng/bintools/json/consts"
+	log2 "github.com/kuchensheng/bintools/json/executor/log"
 	"github.com/kuchensheng/bintools/json/executor/util"
+	"github.com/kuchensheng/bintools/json/model"
 	"github.com/kuchensheng/bintools/tracer/trace"
 	"github.com/rs/zerolog/log"
 	"runtime/debug"
@@ -36,28 +38,39 @@ var scriptEnginFunc = func(context *gin.Context) *goja.Runtime {
 }
 
 //ExecuteJavaScript 执行JS脚本,返回执行结果或者错误信息
-func ExecuteJavaScript(ctx *gin.Context, script, name string) error {
+func ExecuteJavaScript(ctx *gin.Context, step model.ApixStep) error {
 	tracer, _ := ctx.Get(consts.TRACER)
 	if tracer == nil {
 		tracer = trace.NewServerTracer(ctx.Request)
 		ctx.Set(consts.TRACER, tracer)
 	}
-	clientTracer := tracer.(*trace.ServerTracer).NewClientWithHeader(&ctx.Request.Header)
-	clientTracer.TraceName = "执行脚本节点:" + name
+
+	serverTracer := tracer.(*trace.ServerTracer)
+	clientTracer := serverTracer.NewClientWithHeader(&ctx.Request.Header)
+	pk := log2.GetPackage(ctx)
+	ls := log2.LogStruct{PK: pk, TraceId: serverTracer.TracId}
+	ls.Info("开始执行JS脚本...")
+	clientTracer.TraceName = "执行脚本节点:" + step.GraphId
 	defer func() {
 		if x := recover(); x != nil {
+			ls.Error("JS脚本执行异常，panic is :%v", x)
 			log.Error().Msgf("JS脚本执行异常，panic is :%v", x)
 			fmt.Printf("%s\n", debug.Stack())
 			clientTracer.EndTraceError(x.(error))
 		}
 	}()
+	ls.Info("初始化JS引擎...")
 	//初始化JS引擎
 	scriptEngine := scriptEnginFunc(ctx)
-	script = replaceScript(script)
+	ls.Info("JS引擎初始化完成，开始执行JS脚本优化...")
+	script := replaceScript(step.Script.Script)
+	ls.Info("JS脚本优化完成，开始执行JS脚本：%s", script)
 	if v, err := scriptEngine.RunString(script); err != nil {
+		ls.Error("JS脚本执行错误,%s", err.Error())
 		clientTracer.EndTraceError(err)
 		return err
 	} else {
+		ls.Info("JS脚本执行完成，开始解析执行结果...")
 		clientTracer.EndTraceOk()
 		var result any
 		if v != nil || v.ExportType() != nil {
@@ -65,7 +78,8 @@ func ExecuteJavaScript(ctx *gin.Context, script, name string) error {
 		} else {
 			result = v.String()
 		}
-		util.SetResultValue(ctx, fmt.Sprintf("%s%s%s", consts.KEY_TOKEN, name, ".$resp.export"), result)
+		ls.Info("获取JS执行结果:%+v", result)
+		util.SetResultValue(ctx, fmt.Sprintf("%s%s%s", consts.KEY_TOKEN, step.GraphId, ".$resp.export"), result)
 		return nil
 	}
 }

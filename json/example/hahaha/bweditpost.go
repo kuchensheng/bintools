@@ -130,12 +130,12 @@ func runStep(step model.ApixStep, ctx *gin.Context, stepMap map[string]model.Api
 
 	if step.Language == "javascript" {
 		// 执行JS脚本内容
-		if e := js.ExecuteJavaScript(ctx, step.Script.Script, step.GraphId); e != nil {
+		if e := js.ExecuteJavaScript(ctx, step); e != nil {
 			return e
 		}
 	} else if step.Predicate != nil {
 		//执行判断逻辑
-		if ok, e := predicate.ExecPredicates(ctx, step.Predicate, step.PredicateType); e != nil {
+		if ok, e := predicate.ExecPredicates(ctx, step); e != nil {
 			return e
 		} else {
 			nextStep := stepMap[step.ThenGraphId]

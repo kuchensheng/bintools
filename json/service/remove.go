@@ -74,7 +74,14 @@ func Runner(ctx *gin.Context) (int, error) {
 				return http.StatusOK, consts.OkWithData(value)
 			}
 		case "JAVASCRIPT":
-			if err = js.ExecuteJavaScript(ctx, content.Script, "default"); err != nil {
+			step := model.ApixStep{
+				Script: model.ApixScript{
+					Script:   content.Script,
+					Language: "javascript",
+				},
+				GraphId: "default",
+			}
+			if err = js.ExecuteJavaScript(ctx, step); err != nil {
 				return http.StatusBadRequest, consts.NewBusinessException(1080500, "无法执行script脚本："+err.Error())
 			}
 			return http.StatusOK, consts.OkWithData(util.GetResultValue(ctx, "$default.$resp.export"))

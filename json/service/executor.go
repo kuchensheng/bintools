@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	log2 "github.com/kuchensheng/bintools/json/executor/log"
 	"github.com/kuchensheng/bintools/json/lib"
 	"github.com/rs/zerolog/log"
 	"github.com/traefik/yaegi/interp"
@@ -45,7 +46,7 @@ func Execute(context *gin.Context) (any, error) {
 		}
 	}()
 	//执行go脚本
-	pk := getPackage(context)
+	pk := log2.GetPackage(context)
 	scriptPath := readGoScript(context, pk)
 	var scriptEngine *interp.Interpreter
 	if p, ok := lib.GetProgramMap(pk); ok {
@@ -78,17 +79,6 @@ func Execute(context *gin.Context) (any, error) {
 
 	return nil, nil
 
-}
-
-func getPackage(ctx *gin.Context) string {
-	uri := strings.ReplaceAll(ctx.Request.URL.Path, "/", "_")
-	method := strings.ToLower(ctx.Request.Method)
-	version := ctx.GetHeader("version")
-	key := strings.Join([]string{uri, method, version}, "_")
-	key = strings.ReplaceAll(key, "/", "_")
-	key = strings.ReplaceAll(key, "_api_app_orc_", "")
-	key = strings.ReplaceAll(key, "_", "")
-	return key
 }
 
 func readGoScript(ctx *gin.Context, key string) string {

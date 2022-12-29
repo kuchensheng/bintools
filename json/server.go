@@ -119,6 +119,7 @@ func main() {
 		context.JSON(http.StatusOK, consts.NewBusinessExceptionWithData(0, "请求成功", result))
 
 	})
+	router.Any("/ws/app/orc/log", service.LogServer)
 
 	port := strconv.Itoa(*serverPort)
 	router.Run(":" + port)

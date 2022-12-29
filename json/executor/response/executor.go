@@ -3,13 +3,28 @@ package response
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/kuchensheng/bintools/json/consts"
+	log2 "github.com/kuchensheng/bintools/json/executor/log"
 	"github.com/kuchensheng/bintools/json/executor/util"
 	"github.com/kuchensheng/bintools/json/model"
+	"github.com/kuchensheng/bintools/tracer/trace"
 	"github.com/rs/zerolog/log"
 )
 
 //BuildSuccessResponse 组装响应结果
 func BuildSuccessResponse(ctx *gin.Context, responses map[string]model.ApixResponse) (any, error) {
+	v, _ := ctx.Get(consts.TRACER)
+	tracer := v.(*trace.ServerTracer)
+	pk := log2.GetPackage(ctx)
+	ls := log2.LogStruct{PK: pk, TraceId: tracer.TracId}
+	ls.Info("开始组装响应结果...")
+	defer func() {
+		if x := recover(); x != nil {
+			log.Warn().Msgf("结果组装异常:%v", x)
+			ls.Error("结果组装失败:%s", x.(error).Error())
+		} else {
+			ls.Info("结果组装完毕")
+		}
+	}()
 	for s, response := range responses {
 		if s == "200" {
 			schema := readSchema(ctx, response.Schema)

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/kuchensheng/bintools/json/consts"
+	log2 "github.com/kuchensheng/bintools/json/executor/log"
 	"github.com/kuchensheng/bintools/json/executor/util"
 	"github.com/kuchensheng/bintools/json/model"
 	"github.com/kuchensheng/bintools/tracer/trace"
@@ -21,15 +22,22 @@ import (
 func ExecServer(ctx *gin.Context, step model.ApixStep) error {
 	v, _ := ctx.Get(consts.TRACER)
 	tracer := v.(*trace.ServerTracer)
+	pk := log2.GetPackage(ctx)
+	ls := log2.LogStruct{PK: pk, TraceId: tracer.TracId}
+	ls.Info("开始执行服务节点:%s", step.Path)
 	if request, err := buildRequest(ctx, step); err != nil {
-		log.Warn().Msgf("不能正确地构建请求")
+		ls.Error("无法构建请求[%s%s]:%s", step.Domain, step.Path, err.Error())
+		log.Warn().Msgf("不能正确地构建请求,%v", err)
 		return consts.NewException(step.GraphId, "", err.Error())
 	} else if request != nil {
+		ls.Info("发起请求:%s,method :%s", request.URL.Path, request.Method)
 		log.Info().Msgf("请求地址:%s", request.URL.String())
 		if result, err1 := tracer.Call(request); err1 != nil {
+			ls.Error("服务节点执行失败:%s", err1.Error())
 			log.Warn().Msgf("服务节点执行失败,%v", err1)
 			return consts.NewException(step.GraphId, "", err1.Error())
 		} else {
+			ls.Info("服务节点执行成功:%s", result)
 			util.SetResultValue(ctx, fmt.Sprintf("%s%s%s", consts.KEY_TOKEN, step.GraphId, ".$resp.data"), result)
 			return nil
 		}
