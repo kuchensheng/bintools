@@ -14,7 +14,8 @@ RUN go mod init github.com/kuchensheng/project \
     && go get github.com/kuchensheng/bintools/json \
     && go get github.com/kuchensheng/bintools/tracer/trace \
     && go get github.com/gin-gonic/gin \
-    && go get github.com/rs/zerolog
+    && go get github.com/rs/zerolog \
+    && go get github.com/kuchensheng/bintools/json/register
 
 RUN mkdir ./json
 COPY . ./json
