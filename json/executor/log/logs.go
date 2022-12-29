@@ -48,7 +48,7 @@ func now() string {
 }
 func StartListener(pk string) {
 	ch := make(chan string, 128)
-	ch <- "开始执行逻辑流"
+	ch <- "连接成功"
 	channelMap.SetDefault(pk, ch)
 }
 func StopListener(pk string) {

@@ -140,3 +140,9 @@ curl --location --request POST 'http://localhost:38240/api/app/orc-server/runner
     "data": "你好老库"
 }
 ```
+### 2.2.5 输出步骤日志
+JSON 引擎支持每一步的执行日志信息,如果需要输出执行日志，请先发起websocket连接，并在5s内发起执行请求.
+1. websocket连接成功后，提示：“连接成功”。<red> **api和method为必填项**</red>
+![img_1.png](img_1.png)
+2. 发起请求后，持续输出日志，直到EOF
+![img_2.png](img_2.png)

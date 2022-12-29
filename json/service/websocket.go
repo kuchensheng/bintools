@@ -22,7 +22,6 @@ func LogServer(context *gin.Context) {
 		return
 	} else {
 		defer upgrade.Close()
-		upgrade.WriteMessage(websocket.TextMessage, []byte("连接成功"))
 		if api, ok := context.GetQuery("api"); !ok {
 			upgrade.WriteMessage(websocket.TextMessage, []byte("api参数不能为空"))
 			return
