@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"reflect"
 	"strconv"
 	"time"
 )
@@ -97,33 +96,8 @@ func main() {
 		context.JSON(service.Runner(context))
 		return
 	})
-	router.Any(*relativePath+"*action", func(context *gin.Context) {
-		ch := make(chan error, 1)
-		var result any
-		go func(channel chan error, ctx *gin.Context) {
-			//获取请求体
-			//r, e := bweditpost.Executorbweditpost(ctx)
-			r, e := service.Execute(ctx)
-			channel <- e
-			result = r
-		}(ch, context)
-		select {
-		case err := <-ch:
-			if err != nil {
-				if reflect.TypeOf(err) == reflect.TypeOf(consts.NewException("", "", "")) {
-					context.JSON(http.StatusBadRequest, err)
-				} else {
-					context.JSON(http.StatusBadRequest, consts.NewBusinessException(1080400, err.Error()))
-				}
-				return
-			}
-		case <-time.After(30 * time.Second):
-			context.JSON(400, consts.NewBusinessException(1080500, "请求超时请检查"))
-			return
-		}
-		context.JSON(http.StatusOK, consts.NewBusinessExceptionWithData(0, "请求成功", result))
-
-	})
+	router.Any(*relativePath+"*action", service.Execute)
+	router.Any("/api/app/test/orc/*action", service.Execute)
 	router.Any("/ws/app/orc/log", service.LogServer)
 
 	port := strconv.Itoa(*serverPort)

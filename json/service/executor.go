@@ -4,12 +4,15 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/kuchensheng/bintools/json/consts"
 	log2 "github.com/kuchensheng/bintools/json/executor/log"
 	"github.com/kuchensheng/bintools/json/lib"
 	"github.com/rs/zerolog/log"
 	"github.com/traefik/yaegi/interp"
+	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime/debug"
 	"strings"
 	"time"
@@ -38,7 +41,34 @@ func Compile(path string) error {
 	return nil
 }
 
-func Execute(context *gin.Context) (any, error) {
+func Execute(ctx *gin.Context) {
+	ch := make(chan error, 1)
+	var result any
+	go func(channel chan error, ctx *gin.Context) {
+		//获取请求体
+		//r, e := bweditpost.Executorbweditpost(ctx)
+		r, e := execute(ctx)
+		channel <- e
+		result = r
+	}(ch, ctx)
+	select {
+	case err := <-ch:
+		if err != nil {
+			if reflect.TypeOf(err) == reflect.TypeOf(consts.NewException("", "", "")) {
+				ctx.JSON(http.StatusBadRequest, err)
+			} else {
+				ctx.JSON(http.StatusBadRequest, consts.NewBusinessException(1080400, err.Error()))
+			}
+			return
+		}
+	case <-time.After(30 * time.Second):
+		ctx.JSON(400, consts.NewBusinessException(1080500, "请求超时请检查"))
+		return
+	}
+	ctx.JSON(http.StatusOK, consts.NewBusinessExceptionWithData(0, "请求成功", result))
+}
+
+func execute(context *gin.Context) (any, error) {
 	defer func() {
 		if x := recover(); x != nil {
 			log.Error().Msgf("请求执行异常，panic:%v", x)

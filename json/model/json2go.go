@@ -115,7 +115,9 @@ func getKey(api ApixApi) string {
 		method = strings.ToLower(method)
 	}
 	key := strings.ReplaceAll(api.Path, consts.GlobalPrefix, "")
+	key = strings.ReplaceAll(key, consts.GlobalTestPrefix, "")
 	key = strings.ReplaceAll(key, "/", "")
+	key = strings.ReplaceAll(key, "-", "")
 	return key + method
 }
 

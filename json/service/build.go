@@ -7,7 +7,7 @@ func BuildJsonFile(filePath, tenantId string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	go Compile(goFile)
+	err = Compile(goFile)
 	return goFile, err //buildGoFile2Plugin(goFile)
 }
 

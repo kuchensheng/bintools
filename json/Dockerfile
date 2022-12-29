@@ -11,11 +11,10 @@ WORKDIR $GOPATH/workspace
 
 RUN go mod init github.com/kuchensheng/project \
     && go get github.com/kuchensheng/bintools \
-    && go get github.com/kuchensheng/bintools/json \
+    && go get github.com/kuchensheng/bintools/json@v1.0.1 \
     && go get github.com/kuchensheng/bintools/tracer/trace \
     && go get github.com/gin-gonic/gin \
-    && go get github.com/rs/zerolog \
-    && go get github.com/kuchensheng/bintools/json/register
+    && go get github.com/rs/zerolog
 
 RUN mkdir ./json
 COPY . ./json

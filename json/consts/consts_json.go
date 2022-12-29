@@ -1,43 +1,42 @@
 package consts
 
 import (
+	"fmt"
 	"github.com/patrickmn/go-cache"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+	"os"
+	"runtime"
+	"strings"
 	"time"
 )
 
 var Cache = cache.New(time.Minute, 30*time.Second)
 
 var GlobalPrefix = "/api/app/orc/"
+var GlobalTestPrefix = "/api/app/test/orc/"
 
 const GlobalTemplate = "tmp.tmpl"
 
-//func init() {
-//	//删除文件
-//	go func() {
-//		ticker := time.NewTicker(time.Minute)
-//		for {
-//			select {
-//			case <-ticker.C:
-//				getwd, _ := os.Getwd()
-//
-//				if globs, err := ioutil.ReadDir(filepath.Join(getwd, "scripts")); err != nil {
-//					log.Error().Msgf("获取js文件列表失败,%v", err)
-//				} else {
-//					for _, glob := range globs {
-//						key := strings.ReplaceAll(glob.Name(), ".js", "")
-//						if _, ok := Cache.Get(key); !ok {
-//							fp := filepath.Join(getwd, "scripts", glob.Name())
-//							log.Info().Msgf("删除文件：%s", fp)
-//							_ = os.Remove(fp)
-//						}
-//					}
-//				}
-//			case <-time.After(time.Second * 30):
-//				continue
-//			}
-//		}
-//	}()
-//}
+func init() {
+	out := zerolog.ConsoleWriter{
+		Out:     os.Stdout,
+		NoColor: true,
+	}
+	out.FormatLevel = func(i interface{}) string {
+		return strings.ToUpper(fmt.Sprintf("[%-4s]", i))
+	}
+	out.FormatCaller = func(i interface{}) string {
+		_, f, line, _ := runtime.Caller(7)
+		return fmt.Sprintf("%s:%2d:", f, line)
+	}
+	out.TimeFormat = time.RFC3339Nano //"2006-01-02 15:04:05"
+	out.FormatTimestamp = func(i interface{}) string {
+		now := time.Now()
+		return fmt.Sprintf("%00s,%d", now.Format("2006-01-02 15:04:05"), now.Nanosecond()/1e6)
+	}
+	log.Logger = log.Logger.Output(out).With().Caller().Logger()
+}
 
 const (
 	KEY_TOKEN         = "$"
