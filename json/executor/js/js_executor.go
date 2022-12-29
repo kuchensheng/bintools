@@ -68,7 +68,7 @@ func ExecuteJavaScript(ctx *gin.Context, step model.ApixStep) error {
 	if v, err := scriptEngine.RunString(script); err != nil {
 		ls.Error("JS脚本执行错误,%s", err.Error())
 		clientTracer.EndTraceError(err)
-		return err
+		return consts.NewException(step.GraphId, "", err.Error())
 	} else {
 		ls.Info("JS脚本执行完成，开始解析执行结果...")
 		clientTracer.EndTraceOk()

@@ -16,12 +16,13 @@ var upgrader = websocket.Upgrader{
 }
 
 func LogServer(context *gin.Context) {
-	if upgrade, err := upgrader.Upgrade(context.Writer, context.Request, context.Request.Header); err != nil {
+	if upgrade, err := upgrader.Upgrade(context.Writer, context.Request, nil); err != nil {
 		log.Warn().Msgf("无法建立websocket连接:%v", err)
 		context.JSON(http.StatusBadRequest, consts.NewBusinessException(1080400, "无法建立websocket连接:"+err.Error()))
 		return
 	} else {
 		defer upgrade.Close()
+		upgrade.WriteMessage(websocket.TextMessage, []byte("连接成功"))
 		if api, ok := context.GetQuery("api"); !ok {
 			upgrade.WriteMessage(websocket.TextMessage, []byte("api参数不能为空"))
 			return

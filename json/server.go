@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"reflect"
 	"strconv"
 	"time"
 )
@@ -109,7 +110,11 @@ func main() {
 		select {
 		case err := <-ch:
 			if err != nil {
-				context.JSON(400, consts.NewBusinessException(1080500, err.Error()))
+				if reflect.TypeOf(err) == reflect.TypeOf(consts.NewException("", "", "")) {
+					context.JSON(http.StatusBadRequest, err)
+				} else {
+					context.JSON(http.StatusBadRequest, consts.NewBusinessException(1080400, err.Error()))
+				}
 				return
 			}
 		case <-time.After(30 * time.Second):

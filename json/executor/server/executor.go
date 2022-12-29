@@ -3,7 +3,6 @@ package server
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/kuchensheng/bintools/json/consts"
@@ -20,6 +19,10 @@ import (
 
 //执行服务节点
 func ExecServer(ctx *gin.Context, step model.ApixStep) error {
+	if step.Path == "" {
+		log.Warn().Msgf("当前服务节点[%s]的Path为空,将不做任何执行", step.GraphId)
+		return nil
+	}
 	v, _ := ctx.Get(consts.TRACER)
 	tracer := v.(*trace.ServerTracer)
 	pk := log2.GetPackage(ctx)
@@ -30,7 +33,7 @@ func ExecServer(ctx *gin.Context, step model.ApixStep) error {
 		log.Warn().Msgf("不能正确地构建请求,%v", err)
 		return consts.NewException(step.GraphId, "", err.Error())
 	} else if request != nil {
-		ls.Info("发起请求:%s,method :%s", request.URL.Path, request.Method)
+		ls.Info("发起请求:%s,method :%s", request.URL.String(), request.Method)
 		log.Info().Msgf("请求地址:%s", request.URL.String())
 		if result, err1 := tracer.Call(request); err1 != nil {
 			ls.Error("服务节点执行失败:%s", err1.Error())
@@ -107,7 +110,7 @@ func buildRequest(ctx *gin.Context, step model.ApixStep) (*http.Request, error) 
 				request.Form.Add(parameter.Name, v.(string))
 			}
 		default:
-			return nil, errors.New("暂不支持的参数形式")
+			return nil, consts.NewException(step.GraphId, "", "不支持的参数形式")
 		}
 	}
 	return request, nil
