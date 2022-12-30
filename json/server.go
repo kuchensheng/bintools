@@ -96,6 +96,11 @@ func main() {
 		return
 	})
 
+	//健康检查接口
+	router.Any("/api/app/orc-server/system/status", func(context *gin.Context) {
+		context.JSON(http.StatusOK, "")
+	})
+
 	relativePath := consts.GlobalPrefix
 	if v := configuration.GetConfig("server.context"); v != nil {
 		relativePath = fmt.Sprintf("%v", v)
