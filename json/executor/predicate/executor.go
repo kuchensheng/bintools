@@ -1,6 +1,7 @@
 package predicate
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/kuchensheng/bintools/json/consts"
 	log2 "github.com/kuchensheng/bintools/json/executor/log"
@@ -52,6 +53,7 @@ func ExecPredicates(ctx *gin.Context, step model.ApixStep) (bool, error) {
 		}
 	}
 	ls.Info("逻辑判断执行完毕,执行结果：%t", b)
+	log.Info().Msgf("逻辑判断执行完毕,执行结果：%t", b)
 	clientTracer.EndTrace(trace.OK, "判断节点执行结果:"+strconv.FormatBool(b))
 	return b, nil
 }
@@ -69,7 +71,7 @@ func compare(k, v any, op string) bool {
 	}()
 	switch op {
 	case eq:
-		return k == v
+		return fmt.Sprintf("%v", k) == fmt.Sprintf("%v", v)
 	case inc:
 		return strings.Contains(k.(string), v.(string))
 	case ne:

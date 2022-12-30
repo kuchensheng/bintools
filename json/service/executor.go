@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/kuchensheng/bintools/json/consts"
+	homeccbwaddpost "github.com/kuchensheng/bintools/json/example/system"
 	log2 "github.com/kuchensheng/bintools/json/executor/log"
 	"github.com/kuchensheng/bintools/json/lib"
 	"github.com/rs/zerolog/log"
@@ -46,8 +47,9 @@ func Execute(ctx *gin.Context) {
 	var result any
 	go func(channel chan error, ctx *gin.Context) {
 		//获取请求体
+		r, e := homeccbwaddpost.Executorhomeccbwaddpost(ctx)
 		//r, e := bweditpost.Executorbweditpost(ctx)
-		r, e := execute(ctx)
+		//r, e := execute(ctx)
 		channel <- e
 		result = r
 	}(ch, ctx)
@@ -66,7 +68,7 @@ func Execute(ctx *gin.Context) {
 		ctx.JSON(400, consts.NewBusinessException(1080500, "请求超时请检查"))
 		return
 	}
-	ctx.JSON(http.StatusOK, consts.NewBusinessExceptionWithData(0, "请求成功", result))
+	ctx.JSON(http.StatusOK, result)
 	return
 }
 

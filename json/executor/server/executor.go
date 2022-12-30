@@ -14,6 +14,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -41,6 +42,7 @@ func ExecServer(ctx *gin.Context, step model.ApixStep) error {
 			return consts.NewException(step.GraphId, "", err1.Error())
 		} else {
 			ls.Info("服务节点执行成功:%s", result)
+			log.Warn().Msgf("服务节点执行成功,%s", result)
 			util.SetResultValue(ctx, fmt.Sprintf("%s%s%s", consts.KEY_TOKEN, step.GraphId, ".$resp.data"), result)
 			return nil
 		}
@@ -70,6 +72,8 @@ func buildRequest(ctx *gin.Context, step model.ApixStep) (*http.Request, error) 
 		Header: make(map[string][]string),
 		Form:   make(map[string][]string),
 	}
+	request.Header = ctx.Request.Header
+	request.Header.Del("Accept-Encoding")
 	for _, parameter := range step.Parameters {
 		location := parameter.In
 		switch location {
@@ -85,9 +89,7 @@ func buildRequest(ctx *gin.Context, step model.ApixStep) (*http.Request, error) 
 				}
 				data, _ := json.Marshal(body)
 				request.Body = ioutil.NopCloser(bytes.NewBuffer(data))
-				if len(body) == 0 {
-					request.ContentLength = 0
-				}
+				request.Header.Set("Content-Length", strconv.Itoa(len(data)))
 			}
 
 		case consts.KEY_QUERY:
@@ -112,9 +114,6 @@ func buildRequest(ctx *gin.Context, step model.ApixStep) (*http.Request, error) 
 		default:
 			return nil, consts.NewException(step.GraphId, "", "不支持的参数形式")
 		}
-	}
-	if len(request.Header) == 0 {
-		request.Header = ctx.Request.Header
 	}
 	return request, nil
 }

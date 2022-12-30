@@ -40,6 +40,9 @@ func GetBodyParameterValue(ctx *gin.Context, key string) any {
 			fmt.Printf("%s\n", debug.Stack())
 		}
 	}()
+	if !strings.HasPrefix(key, consts.KEY_TOKEN) {
+		return key
+	}
 	if v, ok := ctx.Get(consts.PARAMETERMAP); !ok {
 		log.Warn().Msg("请求体不存在")
 		return nil
