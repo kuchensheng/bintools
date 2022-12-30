@@ -38,13 +38,13 @@ func ExecPredicates(ctx *gin.Context, step model.ApixStep) (bool, error) {
 	clientTracer.TraceName = "执行判断逻辑节点"
 	ls.Info(clientTracer.TraceName + "...")
 	predicateType := step.PredicateType
-	log.Info().Msgf("执行逻辑判断，type= %d", predicateType)
+	log.Info().Msgf("执行逻辑判断节点：%s，type= %d", step.GraphId, predicateType)
 	var b bool
 	predicates := step.Predicate
 	for _, predicate := range predicates {
 		left := util.GetContextValue(ctx, predicate.Key)
 		right := util.GetContextValue(ctx, predicate.Value)
-		ls.Info("逻辑判断比较,%s %s %s", left, predicate.Operator, right)
+		ls.Info("逻辑判断比较,%s %s %s", fmt.Sprintf("%v", left), predicate.Operator, fmt.Sprintf("%v", right))
 		b = compare(left, right, predicate.Operator)
 		if !b && predicateType > 0 {
 			break

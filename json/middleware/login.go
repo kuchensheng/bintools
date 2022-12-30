@@ -78,21 +78,42 @@ func getUserStatus(token string) UserStatus {
 	return status
 }
 
+var excludeUrl = func() []string {
+	var res []string
+	if v := configuration.GetConfig("login.exclude"); v != nil {
+		for _, a := range v.([]any) {
+			res = append(res, a.(string))
+		}
+	}
+	return res
+}()
+
+func match(uri string) bool {
+	for _, s := range excludeUrl {
+		if uri == s {
+			return true
+		}
+	}
+	return false
+}
+
 func LoginFilter() gin.HandlerFunc {
 	return func(context *gin.Context) {
-		token := context.GetHeader("token")
-		if token == "" {
-			context.JSON(http.StatusUnauthorized, consts.NewBusinessException(1080401, "登录校验失败,token为空"))
-			context.Abort()
-			return
+		if !match(context.Request.URL.Path) {
+			token := context.GetHeader("token")
+			if token == "" {
+				context.JSON(http.StatusUnauthorized, consts.NewBusinessException(1080401, "登录校验失败,token为空"))
+				context.Abort()
+				return
+			}
+			status := getUserStatus(token)
+			if status.Data.TenantId == "" {
+				context.JSON(http.StatusUnauthorized, consts.NewBusinessException(1080401, "租户信息校验失败"))
+				context.Abort()
+				return
+			}
+			context.Set(consts.TENANT_ID, status.Data.TenantId)
 		}
-		status := getUserStatus(token)
-		if status.Data.TenantId == "" {
-			context.JSON(http.StatusUnauthorized, consts.NewBusinessException(1080401, "租户信息校验失败"))
-			context.Abort()
-			return
-		}
-		context.Set(consts.TENANT_ID, status.Data.TenantId)
 		context.Next()
 	}
 }
