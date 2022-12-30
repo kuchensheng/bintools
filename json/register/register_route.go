@@ -8,7 +8,7 @@ import (
 	"net/http"
 )
 
-var RouteHost string = "http://isc-route-service:31000"
+var RouteHost = "http://isc-route-service:31000"
 var registerUri = "/api/route/refreshRoute"
 var contentType = "application/json"
 

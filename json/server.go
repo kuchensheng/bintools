@@ -1,8 +1,9 @@
 package main
 
 import (
-	"flag"
+	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/kuchensheng/bintools/json/configuration"
 	"github.com/kuchensheng/bintools/json/consts"
 	"github.com/kuchensheng/bintools/json/lib"
 	"github.com/kuchensheng/bintools/json/register"
@@ -13,27 +14,12 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"strings"
 	"time"
 )
 
 func main() {
 	//启动http服务，承接请求
-	relativePath := flag.String("context_path", "/api/app/orc/", "请求路径前缀")
-	serverPort := flag.Int("port", 38240, "服务器端口，默认:38240")
-	goPath := flag.String("go_path", "", "Go编译环境地址")
-	routeHost := flag.String("route_host", "", "路由服务地址，默认:http://isc-route-service:31000")
-	flag.Parse()
-	if *goPath != "" {
-		lib.GoPath = *goPath
-	}
-	if *relativePath != consts.GlobalPrefix {
-		consts.GlobalPrefix = *relativePath
-	}
-	if *routeHost != "" {
-		register.RouteHost = *routeHost
-	}
-	go register.InitRoute()
-
 	log.Logger = log.Logger.Level(zerolog.InfoLevel)
 	wd, _ := os.Getwd()
 	router := gin.Default()
@@ -96,11 +82,43 @@ func main() {
 		context.JSON(service.Runner(context))
 		return
 	})
-	router.Any(*relativePath+"*action", service.Execute)
+
+	relativePath := consts.GlobalPrefix
+	if v := configuration.GetConfig("server.context"); v != nil {
+		relativePath = fmt.Sprintf("%v", v)
+		consts.GlobalPrefix = relativePath
+	}
+	testRelativePath := consts.GlobalTestPrefix
+	if v := configuration.GetConfig("server.context-test"); v != nil {
+		testRelativePath = fmt.Sprintf("%v", v)
+		consts.GlobalTestPrefix = testRelativePath
+	}
+
+	if !strings.HasSuffix(relativePath, "/") {
+		relativePath += "/"
+	}
+	goPath := lib.GoPath
+	if v := configuration.GetConfig("server.go.path"); v != nil {
+		goPath = fmt.Sprintf("%v", v)
+		lib.GoPath = goPath
+	}
+	routeHost := register.RouteHost
+	if v := configuration.GetConfig("server.route.host"); v != nil {
+		routeHost = fmt.Sprintf("%v", v)
+		register.RouteHost = routeHost
+	}
+
+	go register.InitRoute()
+
+	router.Any(relativePath+"*action", service.Execute)
 	router.Any("/api/app/test/orc/*action", service.Execute)
 	router.Any("/ws/app/orc/log", service.LogServer)
 
-	port := strconv.Itoa(*serverPort)
+	//port := strconv.Itoa(*serverPort)
+	port := "38240"
+	if v := configuration.GetConfig("server.port"); v != nil {
+		port = strconv.Itoa(v.(int))
+	}
 	router.Run(":" + port)
 
 }
