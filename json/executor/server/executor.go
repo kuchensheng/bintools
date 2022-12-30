@@ -113,5 +113,8 @@ func buildRequest(ctx *gin.Context, step model.ApixStep) (*http.Request, error) 
 			return nil, consts.NewException(step.GraphId, "", "不支持的参数形式")
 		}
 	}
+	if len(request.Header) == 0 {
+		request.Header = ctx.Request.Header
+	}
 	return request, nil
 }
