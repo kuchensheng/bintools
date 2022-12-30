@@ -8,6 +8,8 @@ import (
 	"net/http"
 )
 
+var ErrKey = "_err_key"
+
 type exception struct {
 	Location    string `json:"location"`
 	Name        string `json:"name"`

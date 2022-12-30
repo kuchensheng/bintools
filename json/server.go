@@ -6,6 +6,7 @@ import (
 	"github.com/kuchensheng/bintools/json/configuration"
 	"github.com/kuchensheng/bintools/json/consts"
 	"github.com/kuchensheng/bintools/json/lib"
+	"github.com/kuchensheng/bintools/json/middleware"
 	"github.com/kuchensheng/bintools/json/register"
 	"github.com/kuchensheng/bintools/json/service"
 	"github.com/rs/zerolog"
@@ -23,6 +24,15 @@ func main() {
 	log.Logger = log.Logger.Level(zerolog.InfoLevel)
 	wd, _ := os.Getwd()
 	router := gin.Default()
+	loginEnabled := false
+	if v := configuration.GetConfig("login.enable"); v != nil {
+		loginEnabled = v.(bool)
+	}
+	router.Use(middleware.TracerFilter())
+	if loginEnabled {
+		router.Use(middleware.LoginFilter())
+	}
+
 	router.POST("/api/app/orc-server/build", func(context *gin.Context) {
 		data, _ := context.GetRawData()
 		tenantId := context.GetHeader(consts.TENANT_ID)
@@ -32,7 +42,10 @@ func main() {
 		}
 	})
 	router.POST("/api/app/orc-server/build/file", func(context *gin.Context) {
-		tenantId := context.GetHeader(consts.TENANT_ID)
+		var tenantId string
+		if t, ok := context.Get(consts.TENANT_ID); ok {
+			tenantId = fmt.Sprintf("%v", t)
+		}
 		if file, err := context.FormFile("file"); err != nil {
 			log.Error().Msgf("无法读取文件,key=file,%v", err)
 			context.JSON(400, consts.NewBusinessException(1080500, err.Error()))

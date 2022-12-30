@@ -54,6 +54,7 @@ func Execute(ctx *gin.Context) {
 	select {
 	case err := <-ch:
 		if err != nil {
+			ctx.Set(consts.ErrKey, err)
 			if reflect.TypeOf(err) == reflect.TypeOf(consts.NewException("", "", "")) {
 				ctx.JSON(http.StatusBadRequest, err)
 			} else {
@@ -66,6 +67,7 @@ func Execute(ctx *gin.Context) {
 		return
 	}
 	ctx.JSON(http.StatusOK, consts.NewBusinessExceptionWithData(0, "请求成功", result))
+	return
 }
 
 func execute(context *gin.Context) (any, error) {

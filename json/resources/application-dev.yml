@@ -14,6 +14,6 @@ login:
   # 是否启用权限拦截
   enable: true
   #权限服务地址（默认 http://isc-permission-service:32100）
-  permissionUrl: http://10.30.30.78:38080
+  permissionUrl: http://10.30.30.96:38080
 api-module: orc-server
 

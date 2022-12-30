@@ -1,6 +1,7 @@
 package trace
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -389,6 +390,7 @@ func parametersCollector(req *http.Request) []Parameter {
 		if data, err := ioutil.ReadAll(req.Body); err != nil {
 			//do nothing
 		} else {
+			req.Body = ioutil.NopCloser(bytes.NewBuffer(data))
 			parameters = append(parameters, Parameter{
 				Name:  "请求体",
 				In:    "body",
