@@ -10,6 +10,7 @@ import (
 	"github.com/kuchensheng/bintools/json/model"
 	"github.com/kuchensheng/bintools/tracer/trace"
 	"github.com/rs/zerolog/log"
+	"reflect"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -30,6 +31,7 @@ var scriptEnginFunc = func(context *gin.Context) *goja.Runtime {
 	scriptEngine.Set("setValueByKey", func(ctx *gin.Context, key string, value any) {
 		util.SetResultValue(ctx, key, value)
 	})
+
 	//设定最长执行时间：1分钟
 	time.AfterFunc(time.Minute, func() {
 		scriptEngine.Interrupt("timeout")
@@ -77,6 +79,24 @@ func ExecuteJavaScript(ctx *gin.Context, step model.ApixStep) error {
 			result = v.Export()
 		} else {
 			result = v.String()
+		}
+		if v.ExportType() == reflect.TypeOf(goja.Promise{}) {
+			promise := result.(*goja.Promise)
+			res := promise.Result()
+			switch s := promise.State(); s {
+			case goja.PromiseStateFulfilled:
+				result = res
+			case goja.PromiseStateRejected:
+				if resObj, ok := res.(*goja.Object); ok {
+					if stack := resObj.Get("stack"); stack != nil {
+						ls.Error("JS执行失败,%v", stack.String())
+						log.Error().Msgf("JS执行失败,%v", stack.String())
+					}
+				}
+			default:
+				ls.Error("Unexpected promise state,%v", s)
+				log.Error().Msgf("Unexpected promise state,%v", s)
+			}
 		}
 		ls.Info("获取JS执行结果:%+v", result)
 		util.SetResultValue(ctx, fmt.Sprintf("%s%s%s", consts.KEY_TOKEN, step.GraphId, ".$resp.export"), result)
