@@ -21,28 +21,28 @@ type templateParam struct {
 	TenantId       string `json:"tenantId"`
 }
 
-func GenerateJson2Go(content []byte, tenantId string) (string, error) {
+func GenerateJson2Go(content []byte, tenantId, appCode string) (string, error) {
 	log.Info().Msgf("将json内容解析成apixData对象")
 	data := ApixData{}
 	if err := json.Unmarshal(content, &data); err != nil {
 		log.Error().Msgf("无法将json转化为ApixData,请检查json内容是否符合格式，%v", err)
 		return "", err
 	} else {
-		return generateGo(data, tenantId)
+		return generateGo(data, tenantId, appCode)
 	}
 }
 
 //GenerateFile2Go 返回Go文件地址，或者错误信息
-func GenerateFile2Go(fileName, tenantId string) (string, error) {
+func GenerateFile2Go(fileName, tenantId, appCode string) (string, error) {
 	data, err := os.ReadFile(fileName)
 	if err != nil {
 		log.Error().Msgf("无法打开文件,%v", err)
 		return "", err
 	}
-	return GenerateJson2Go(data, tenantId)
+	return GenerateJson2Go(data, tenantId, appCode)
 }
 
-func generateGo(data ApixData, tenantId string) (string, error) {
+func generateGo(data ApixData, tenantId, appCode string) (string, error) {
 	log.Info().Msgf("apixData对象解析成go源码")
 
 	pk := getKey(data.Rule.Api)
@@ -60,7 +60,7 @@ func generateGo(data ApixData, tenantId string) (string, error) {
 		TenantId:       tenantId,
 	}
 
-	goFilePath := getGoFilePath(pk, tenantId)
+	goFilePath := getGoFilePath(pk, tenantId, appCode)
 	if f, err := createGoFile(goFilePath); err != nil {
 		return "", err
 	} else if err = tmpl.Execute(f, tp); err != nil {
@@ -70,9 +70,9 @@ func generateGo(data ApixData, tenantId string) (string, error) {
 	return goFilePath, nil
 }
 
-func getGoFilePath(key, tenantId string) string {
+func getGoFilePath(key, tenantId, appCode string) string {
 	pwd, _ := os.Getwd()
-	return filepath.Join(pwd, "example", tenantId, key+".go")
+	return filepath.Join(pwd, "example", tenantId, appCode, key+".go")
 
 }
 

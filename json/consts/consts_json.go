@@ -71,4 +71,6 @@ const (
 
 const (
 	TENANT_ID = "isc-tenant-id"
+	APPCODE   = "appCode"
+	DEFAULT   = "default"
 )

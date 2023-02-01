@@ -3,6 +3,7 @@ package js
 import (
 	"fmt"
 	"github.com/dop251/goja"
+	"github.com/dop251/goja_nodejs/require"
 	"github.com/gin-gonic/gin"
 	"github.com/kuchensheng/bintools/json/consts"
 	log2 "github.com/kuchensheng/bintools/json/executor/log"
@@ -30,6 +31,8 @@ var scriptEnginFunc = func(context *gin.Context) *goja.Runtime {
 	scriptEngine.Set("setValueByKey", func(ctx *gin.Context, key string, value any) {
 		util.SetResultValue(ctx, key, value)
 	})
+	registry := new(require.Registry)
+	registry.Enable(scriptEngine)
 	//设定最长执行时间：1分钟
 	time.AfterFunc(time.Minute, func() {
 		scriptEngine.Interrupt("timeout")

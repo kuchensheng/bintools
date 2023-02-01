@@ -10,6 +10,7 @@ github.com/dop251/goja v0.0.0-20211022113120-dc8c55024d06/go.mod h1:R9ET47fwRVRP
 github.com/dop251/goja v0.0.0-20220927172339-ea66e911853d h1:9ov+GfT+d71fMUpTl1DQ3PCUcfRySXwPt8IjpVUAnn4=
 github.com/dop251/goja v0.0.0-20220927172339-ea66e911853d/go.mod h1:yRkwfj0CBpOGre+TwBsqPV0IH0Pk73e4PXJOeNDboGs=
 github.com/dop251/goja_nodejs v0.0.0-20210225215109-d91c329300e7/go.mod h1:hn7BA7c8pLvoGndExHudxTDKZ84Pyvv+90pbBjbTz0Y=
+github.com/dop251/goja_nodejs v0.0.0-20211022123610-8dd9abb0616d h1:W1n4DvpzZGOISgp7wWNtraLcHtnmnTwBlJidqtMIuwQ=
 github.com/dop251/goja_nodejs v0.0.0-20211022123610-8dd9abb0616d/go.mod h1:DngW8aVqWbuLRMHItjPUyqdj+HWPvnQe8V8y1nDpIbM=
 github.com/gin-contrib/sse v0.1.0 h1:Y/yl/+YNO8GZSjAhjMsSuLt29uWRFHdHYUb5lYOV9qE=
 github.com/gin-contrib/sse v0.1.0/go.mod h1:RHrZQHXnP2xjPF+u1gW/2HnVO7nvIa9PG3Gm+fLHvGI=
@@ -44,8 +45,6 @@ github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
 github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
 github.com/kr/text v0.2.0 h1:5Nx0Ya0ZqY2ygV366QzturHI13Jq95ApcVaJBhpS+AY=
 github.com/kr/text v0.2.0/go.mod h1:eLer722TekiGuMkidMxC/pM04lWEeraHUUmBw8l2grE=
-github.com/kuchensheng/bintools v0.0.4 h1:qIBNHQOYS53s3lhmHym8Vk8LvmojLwdhw0L1LBTnIGw=
-github.com/kuchensheng/bintools v0.0.4/go.mod h1:axso7mDIWSpIaYWVqTKy5sb0i9NNwIO/tNpuwYRZVDk=
 github.com/kuchensheng/bintools/tracer v0.0.5 h1:j24I2/LZWaT/2zc9kYN4z+j1ZBT6eBvNfMzDQ04ur6c=
 github.com/kuchensheng/bintools/tracer v0.0.5/go.mod h1:cuhjhCZYBhQocL57S8PwQWif4+EQ7dLQusYo7twpJyg=
 github.com/leodido/go-urn v1.2.1 h1:BqpAaACuzVSgi/VLzGZIobT2z4v53pjosyNd9Yv6n/w=
