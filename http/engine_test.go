@@ -21,12 +21,7 @@ func TestEngine_Get(t *testing.T) {
 		name := ctx.GetString("name")
 		t.Logf("name = %s", name)
 	})
-	e.Use(func(ctx *Context) {
-		ctx.Set("b", "myb")
-		//ctx.Next()
-		name := ctx.GetString("name")
-		t.Logf("bname = %s", name)
-	})
+
 	e.Get("/api/test", func(ctx *Context) {
 		a, _ := ctx.GetQuery("a")
 		t.Logf("a = %s", a)
@@ -40,6 +35,14 @@ func TestEngine_Get(t *testing.T) {
 				Ages []int  `json:"ages"`
 			}{"嘿嘿", []int{1, 2, 3}},
 		})
+	})
+
+	//从这以后的请求，将执行两个middleware
+	e.Use(func(ctx *Context) {
+		ctx.Set("b", "myb")
+		//ctx.Next()
+		name := ctx.GetString("name")
+		t.Logf("bname = %s", name)
 	})
 
 	e.Get("/api/test/:id", func(ctx *Context) {

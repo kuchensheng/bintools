@@ -14,9 +14,12 @@ import (
 )
 
 type engine struct {
+	//全局执行调用链
 	handlers HandlersChain
-	pool     sync.Pool
-	routes   *Trie
+	// 上下文池子，避免重复释放-申请内存
+	pool sync.Pool
+	//路由规则前缀树
+	routes *Trie
 }
 
 func Default() *engine {
@@ -77,24 +80,39 @@ func (e *engine) Run(port int) {
 }
 
 func (e *engine) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	c := e.pool.Get().(*Context)
-	c.Request = req
-	c.Writer = w
-	//处理该上下文
-	method := strings.ToUpper(req.Method)
-	uri := req.URL.Path
-	word := method + uri
-	search := e.routes.Search(word)
+	//查找目标处理器
+	search := func(request *http.Request) *Route {
+		method := strings.ToUpper(request.Method)
+		uri := req.URL.Path
+		word := method + uri
+		return e.routes.Search(word)
+	}(req)
 	if search == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+	c := e.pool.Get().(*Context)
+	c.reset()
+	c.Request = req
+	c.Writer = w
+
 	c.Route = search
 	req.ParseForm()
 	c.handlers = search.Handler
 	defer c.Recovery()
 	handle(c.handlers, c)
 	defer e.pool.Put(c)
+}
+
+func (c *Context) reset() {
+	c.index = 0
+	c.Writer = nil
+	c.Request = nil
+	c.handlers = nil
+	c.Keys = nil
+	c.queryCache = nil
+	c.formCache = nil
+	c.Route = nil
 }
 
 func handle(chain HandlersChain, ctx *Context) {
