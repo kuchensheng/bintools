@@ -10,10 +10,10 @@ type Route struct {
 	Handler HandlersChain `json:"handler"`
 }
 
-//Trie 前缀树，用于存储路由服务和路径的映射关系
-type Trie struct {
+//trie 前缀树，用于存储路由服务和路径的映射关系
+type trie struct {
 	//next 下个节点信息
-	next map[string]*Trie
+	next map[string]*trie
 	//target 节点对应的路由规则
 	target *Route
 
@@ -26,9 +26,9 @@ type Trie struct {
 }
 
 //NewTrie 初始化树，返回一个前缀树的指针
-func NewTrie() *Trie {
-	return &Trie{
-		next:      make(map[string]*Trie),
+func NewTrie() *trie {
+	return &trie{
+		next:      make(map[string]*trie),
 		isWord:    false,
 		IsInitial: true,
 	}
@@ -43,12 +43,12 @@ func NewTrie() *Trie {
       - /other -> Route{}
     - /test -> Route{}
 */
-func (t *Trie) Insert(word string, route Route) {
+func (t *trie) Insert(word string, route Route) {
 	if !strings.Contains(word, "*") && !strings.Contains(word, ":") {
-		newT := new(Trie)
-		newT.next = make(map[string]*Trie)
+		newT := new(trie)
+		newT.next = make(map[string]*trie)
 		newT.isWord = false
-		t.next[word] = &Trie{
+		t.next[word] = &trie{
 			isWord: false,
 			target: &route,
 		}
@@ -59,8 +59,8 @@ func (t *Trie) Insert(word string, route Route) {
 			continue
 		}
 		if t.next[v] == nil {
-			node := new(Trie)
-			node.next = make(map[string]*Trie)
+			node := new(trie)
+			node.next = make(map[string]*trie)
 			node.isWord = false
 			node.key = v
 			t.next[v] = node
@@ -79,7 +79,7 @@ func (t *Trie) Insert(word string, route Route) {
 
 //Search 前缀树查找，其时间复杂度为O(K),K=前缀长度，例如Path = /api/test/test,则前缀长度K=3
 //注意：查询时需要注意路径参数匹配
-func (t Trie) Search(word string) *Route {
+func (t trie) Search(word string) *Route {
 	if r, ok := t.next[word]; ok {
 		return r.target
 	}
