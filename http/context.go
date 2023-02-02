@@ -63,6 +63,7 @@ type Context struct {
 // It executes the pending handlers in the chain inside the calling handler.
 // See example in GitHub.
 func (c *Context) Next() {
+	runtime.StartTrace()
 	c.index++
 	for c.index < int8(len(c.handlers)) {
 		c.handlers[c.index](c)
@@ -502,6 +503,7 @@ func (c *Context) Deadline() (deadline time.Time, ok bool) {
 // if you want to abort your work when the connection was closed
 // you should use Request.Context().Done() instead.
 func (c *Context) Done() <-chan struct{} {
+	c.Request.Context().Done()
 	return nil
 }
 
@@ -568,6 +570,8 @@ func (c *Context) Recovery() {
 	if x := recover(); x != nil {
 		msg := fmt.Sprintf("%s", x)
 		log.Println(trace(msg))
+		c.JSON(http.StatusInternalServerError, NewError(x))
+		c.Abort()
 	}
 }
 

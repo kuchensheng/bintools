@@ -1,6 +1,10 @@
 package http
 
-import "testing"
+import (
+	"runtime"
+	"testing"
+	"time"
+)
 
 type testError struct {
 	Code    int    `json:"code"`
@@ -67,6 +71,22 @@ func TestEngine_Get(t *testing.T) {
 		t.Logf("bName = %s", b)
 		ctx.Set("name", "酷达舒")
 		t.Logf("b= %s", ctx.GetString("b"))
+		//go func(context *Context) {
+		//	//todo 显示传递
+		//
+		//}(ctx)
+		println("协程数量 = ", runtime.NumGoroutine())
+		for i := 0; i < 100; i++ {
+			go func(idx int) {
+				time.Sleep(time.Second)
+				println("id =", idx, "\t协程数量 = ", runtime.NumGoroutine())
+				//隐式获取context
+
+			}(i)
+		}
+
+		panic("我错误了")
+
 		ctx.JSON(200, testError{
 			Code:    0,
 			Message: "成功",
