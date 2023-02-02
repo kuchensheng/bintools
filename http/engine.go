@@ -19,7 +19,7 @@ type engine struct {
 	// 上下文池子，避免重复释放-申请内存
 	pool sync.Pool
 	//路由规则前缀树
-	routes *Trie
+	routes *trie
 }
 
 func Default() *engine {
