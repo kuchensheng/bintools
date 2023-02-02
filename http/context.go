@@ -3,8 +3,11 @@ package http
 import (
 	"bytes"
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
+	"github.com/golang/protobuf/proto"
 	"github.com/kuchensheng/bintools/http/util"
+	"gopkg.in/yaml.v3"
 	"io"
 	"io/ioutil"
 	"log"
@@ -536,6 +539,31 @@ func (c *Context) JSON(code int, obj any) {
 	c.Writer.Write(marshal)
 }
 
+// YAML serializes the given struct as YAML into the response body.
+func (c *Context) YAML(code int, obj any) {
+	c.Status(code)
+	marshal, _ := yaml.Marshal(obj)
+	header := c.Writer.Header()
+	header["Content-Type"] = []string{"application/x-yaml; charset=utf-8"}
+	c.Writer.Write(marshal)
+}
+
+// XML serializes the given struct as XML into the response body.
+// It also sets the Content-Type as "application/xml".
+func (c *Context) XML(code int, obj any) {
+	c.Status(code)
+	header := c.Writer.Header()
+	header["Content-Type"] = []string{"application/xml; charset=utf-8"}
+	xml.NewEncoder(c.Writer).Encode(obj)
+}
+
+func (c *Context) ProtoBuf(code int, obj any) {
+	c.Status(code)
+	header := c.Writer.Header()
+	header["Content-Type"] = []string{"application/x-protobuf"}
+	marshal, _ := proto.Marshal(obj.(proto.Message))
+	c.Writer.Write(marshal)
+}
 func (c *Context) Recovery() {
 	if x := recover(); x != nil {
 		msg := fmt.Sprintf("%s", x)
