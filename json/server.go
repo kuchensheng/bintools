@@ -36,7 +36,11 @@ func main() {
 	router.POST("/api/app/orc-server/build", func(context *gin.Context) {
 		data, _ := context.GetRawData()
 		tenantId := context.GetHeader(consts.TENANT_ID)
-		if _, err := service.BuildJson(data, tenantId); err != nil {
+		appCode, ok := context.GetQuery(consts.APPCODE)
+		if !ok {
+			appCode = consts.DEFAULT
+		}
+		if _, err := service.BuildJson(data, tenantId, appCode); err != nil {
 			context.JSON(400, consts.NewBusinessException(1080500, err.Error()))
 
 		}
@@ -45,6 +49,10 @@ func main() {
 		var tenantId string
 		if t, ok := context.Get(consts.TENANT_ID); ok {
 			tenantId = fmt.Sprintf("%v", t)
+		}
+		appCode, ok := context.GetQuery(consts.APPCODE)
+		if !ok {
+			appCode = consts.DEFAULT
 		}
 		if file, err := context.FormFile("file"); err != nil {
 			log.Error().Msgf("无法读取文件,key=file,%v", err)
@@ -61,7 +69,7 @@ func main() {
 			ch := make(chan error, 1)
 			go func(channel chan error, filePath string) {
 				//读取文件内容，并构建
-				_, err1 := service.BuildJsonFile(savePath, tenantId)
+				_, err1 := service.BuildJsonFile(savePath, tenantId, appCode)
 				channel <- err1
 			}(ch, savePath)
 			select {
@@ -79,6 +87,10 @@ func main() {
 	})
 	router.DELETE("/api/app/orc-server/build/file", func(context *gin.Context) {
 		tenantId := context.GetHeader(consts.TENANT_ID)
+		appCode, ok := context.GetQuery(consts.APPCODE)
+		if !ok {
+			appCode = consts.DEFAULT
+		}
 		if path, ok := context.GetQuery("api"); !ok {
 			context.JSON(http.StatusBadRequest, consts.NewBusinessException(1080500, "缺少query必填参数api,示例：?api=/api/app/orc/bw/edit"))
 			return
@@ -87,7 +99,7 @@ func main() {
 			return
 		} else {
 			json, _ := context.GetQuery("json")
-			context.JSON(service.Remove(tenantId, path, method, json))
+			context.JSON(service.Remove(tenantId, path, method, json, appCode))
 			return
 		}
 	})

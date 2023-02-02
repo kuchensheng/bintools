@@ -16,12 +16,12 @@ import (
 	"strings"
 )
 
-func Remove(tenantId, path, method, json string) (int, error) {
+func Remove(tenantId, path, method, json, appCode string) (int, error) {
 	pk := strings.ReplaceAll(path, consts.GlobalPrefix, "")
 	pk = strings.ReplaceAll(pk, "/", "")
 	pk = pk + strings.ToLower(method)
 	wd, _ := os.Getwd()
-	dir := filepath.Join(wd, "example", tenantId)
+	dir := filepath.Join(wd, "example", tenantId, appCode)
 	goFile := filepath.Join(dir, pk+".go")
 	if err := os.Remove(goFile); err != nil {
 		log.Error().Msgf("无法删除go文件[%s],%v", goFile, err)
