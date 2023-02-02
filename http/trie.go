@@ -44,7 +44,7 @@ func NewTrie() *Trie {
     - /test -> Route{}
 */
 func (t *Trie) Insert(word string, route Route) {
-	if !strings.HasSuffix(word, "*") {
+	if !strings.Contains(word, "*") && !strings.Contains(word, ":") {
 		newT := new(Trie)
 		newT.next = make(map[string]*Trie)
 		newT.isWord = false
@@ -96,6 +96,10 @@ func (t Trie) Search(word string) *Route {
 			//todo 路径参数匹配
 			isPathVar := false
 			for s, trie := range t.next {
+				if strings.Contains(s, "*") {
+					return trie.target
+
+				}
 				if strings.HasPrefix(s, ":") {
 					t = *trie
 					if idx == len(split)-1 {

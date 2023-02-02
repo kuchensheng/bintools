@@ -76,6 +76,18 @@ func TestEngine_Get(t *testing.T) {
 			}{"嘿嘿", []int{1, 2, 3, 4, 5}},
 		})
 	})
+	e.Any("/test", func(ctx *Context) {
+		ctx.JSON(200, testError{
+			Code:    400,
+			Message: "我错了，打我呀",
+		})
+	})
+	e.Any("/test/test1/*action", func(ctx *Context) {
+		ctx.JSON(200, testError{
+			Code:    400,
+			Message: "我错了，打我呀111",
+		})
+	})
 
 	e.Run(8080)
 }

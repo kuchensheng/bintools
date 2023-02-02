@@ -40,14 +40,41 @@ func (e *engine) Use(middlewares ...HandlerFunc) {
 
 //Get 注册路由规则及执行方法
 func (e *engine) Get(pattern string, handlers ...HandlerFunc) {
-	//todo 处理路由规则
+	e.registerRouter(http.MethodGet, pattern, handlers...)
+}
+
+func (e *engine) Post(pattern string, handlers ...HandlerFunc) {
+	e.registerRouter(http.MethodPost, pattern, handlers...)
+}
+func (e *engine) Put(pattern string, handlers ...HandlerFunc) {
+	e.registerRouter(http.MethodPut, pattern, handlers...)
+}
+func (e *engine) Delete(pattern string, handlers ...HandlerFunc) {
+	e.registerRouter(http.MethodDelete, pattern, handlers...)
+}
+func (e *engine) Options(pattern string, handlers ...HandlerFunc) {
+	e.registerRouter(http.MethodOptions, pattern, handlers...)
+}
+func (e *engine) Head(pattern string, handlers ...HandlerFunc) {
+	e.registerRouter(http.MethodHead, pattern, handlers...)
+}
+func (e *engine) Any(pattern string, handlers ...HandlerFunc) {
+	e.registerRouter(http.MethodGet, pattern, handlers...)
+	e.registerRouter(http.MethodPost, pattern, handlers...)
+	e.registerRouter(http.MethodPut, pattern, handlers...)
+	e.registerRouter(http.MethodDelete, pattern, handlers...)
+	e.registerRouter(http.MethodOptions, pattern, handlers...)
+	e.registerRouter(http.MethodHead, pattern, handlers...)
+}
+
+func (e *engine) registerRouter(method, pattern string, handlers ...HandlerFunc) {
 	p := pattern
 	if !strings.HasPrefix(p, SEP) {
 		p = SEP + p
 	}
-	p = http.MethodGet + p
+	p = method + p
 	e.routes.Insert(p, Route{
-		Method:  http.MethodGet,
+		Method:  method,
 		Path:    pattern,
 		Handler: append(e.handlers, handlers...),
 	})
