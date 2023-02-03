@@ -493,6 +493,11 @@ func (c *Context) Cookie(name string) (string, error) {
 	return val, nil
 }
 
+// GetHeader returns value from request headers.
+func (c *Context) GetHeader(key string) string {
+	return c.Request.Header.Get(key)
+}
+
 // Deadline always returns that there is no deadline (ok==false),
 // maybe you want to use Request.Context().Deadline() instead.
 func (c *Context) Deadline() (deadline time.Time, ok bool) {

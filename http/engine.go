@@ -25,7 +25,7 @@ type engine struct {
 
 func Default() *engine {
 	return &engine{
-		handlers: HandlersChain{},
+		handlers: HandlersChain{GrpcContext},
 		pool: sync.Pool{
 			New: func() any {
 				return &Context{}
@@ -116,6 +116,7 @@ func (e *engine) registerRouter(method, pattern string, handlers ...HandlerFunc)
 }
 
 func (e *engine) Run(port int) {
+	e.RunRpc()
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", port),
 		Handler: e,
