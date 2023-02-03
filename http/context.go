@@ -541,6 +541,10 @@ func (c *Context) JSON(code int, obj any) {
 	c.Writer.Write(marshal)
 }
 
+func (c *Context) JSONoK(obj any) {
+	c.JSON(http.StatusOK, obj)
+}
+
 // YAML serializes the given struct as YAML into the response body.
 func (c *Context) YAML(code int, obj any) {
 	c.Status(code)

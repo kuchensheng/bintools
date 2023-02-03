@@ -1,6 +1,7 @@
 package http
 
 import (
+	"encoding/json"
 	"runtime"
 	"testing"
 	"time"
@@ -109,5 +110,60 @@ func TestEngine_Get(t *testing.T) {
 		})
 	})
 
+	e.Run(8080)
+}
+
+func TestEngine_PostForm(t *testing.T) {
+	e := Default()
+	e.Post("/api/test/post", func(ctx *Context) {
+		form := ctx.PostForm("name")
+		ctx.JSONoK(Result{0, "成功", form})
+	})
+	e.Run(8080)
+}
+
+func TestEngine_PostFormFile(t *testing.T) {
+	e := Default()
+	e.Post("/api/test/post", func(ctx *Context) {
+		form, _ := ctx.FormFile("file")
+		ctx.JSONoK(Result{0, "成功", form})
+	})
+	e.Run(8080)
+}
+
+func TestEngine_PostRawData(t *testing.T) {
+	e := Default()
+	e.Post("/api/test/post", func(ctx *Context) {
+		data, _ := ctx.GetRawData()
+		var a any
+		json.Unmarshal(data, &a)
+		ctx.JSONoK(Result{0, "成功", a})
+	})
+	e.Run(8080)
+}
+
+func TestEngine_GetWithUse(t *testing.T) {
+	e := Default()
+	e.Use(func(ctx *Context) {
+		t.Logf("my = %s", "库陈胜")
+		ctx.Set("my", "库陈胜")
+		ctx.Next()
+		name := ctx.GetString("name")
+		t.Logf("name = %s", name)
+	})
+	e.Get("/api/test", func(ctx *Context) {
+		a, _ := ctx.GetQuery("a")
+		t.Logf("a = %s", a)
+		ctx.Set("name", "酷达舒")
+		t.Logf("b= %s", ctx.GetString("b"))
+		ctx.JSON(200, testError{
+			Code:    0,
+			Message: "成功",
+			Data: struct {
+				Name string `json:"name"`
+				Ages []int  `json:"ages"`
+			}{"嘿嘿", []int{1, 2, 3}},
+		})
+	})
 	e.Run(8080)
 }

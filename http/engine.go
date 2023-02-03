@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path"
 	"strings"
 	"sync"
 	"syscall"
@@ -65,6 +66,40 @@ func (e *engine) Any(pattern string, handlers ...HandlerFunc) {
 	e.registerRouter(http.MethodDelete, pattern, handlers...)
 	e.registerRouter(http.MethodOptions, pattern, handlers...)
 	e.registerRouter(http.MethodHead, pattern, handlers...)
+}
+
+func (e *engine) Static(relativePath, root string) {
+	e.StaticFS(relativePath, Dir(root, true))
+}
+
+func (e *engine) StaticFS(relativePath string, fs http.FileSystem) {
+	if strings.Contains(relativePath, ":") || strings.Contains(relativePath, "*") {
+		panic("URL parameters can not be used when serving a static folder")
+	}
+	//创建handler
+	handler := func(r string, f http.FileSystem) HandlerFunc {
+		fileServer := http.StripPrefix("/", http.FileServer(fs))
+		return func(ctx *Context) {
+			if _, noListing := fs.(*onlyFilesFS); noListing {
+				ctx.Writer.WriteHeader(http.StatusNotFound)
+			}
+			filepath, _ := ctx.GetPath("filepath")
+			if file, err := fs.Open(filepath); err != nil {
+				ctx.Writer.WriteHeader(http.StatusNotFound)
+				ctx.Abort()
+				return
+			} else {
+				file.Close()
+				fileServer.ServeHTTP(ctx.Writer, ctx.Request)
+			}
+
+		}
+	}(relativePath, fs)
+
+	urlPattern := path.Join(relativePath, "/*filepath")
+
+	e.registerRouter(http.MethodGet, urlPattern, handler)
+	e.registerRouter(http.MethodHead, urlPattern, handler)
 }
 
 func (e *engine) registerRouter(method, pattern string, handlers ...HandlerFunc) {
