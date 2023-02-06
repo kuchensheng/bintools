@@ -21,6 +21,8 @@ type engine struct {
 	pool sync.Pool
 	//路由规则前缀树
 	routes *trie
+
+	RpcServer bool
 }
 
 func Default() *engine {
@@ -116,7 +118,7 @@ func (e *engine) registerRouter(method, pattern string, handlers ...HandlerFunc)
 }
 
 func (e *engine) Run(port int) {
-	e.RunRpc()
+	e.RunRpc(port + 1)
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", port),
 		Handler: e,

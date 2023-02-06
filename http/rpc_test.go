@@ -26,7 +26,7 @@ func (t *Arith) Add(args Args, reply *Reply) error {
 
 func TestRegister(t *testing.T) {
 	e := Default()
-	e.Register(new(Arith))
+	e.Register("Arith", new(Arith))
 	e.Run(8080)
 }
 
@@ -34,11 +34,12 @@ func TestRpcClient(t *testing.T) {
 	args := &Args{7, 8}
 	reply := new(Reply)
 
-	if c, err := rpc.DialHTTP("tcp", "127.0.0.1:8080"); err != nil {
+	if c, err := rpc.Dial("tcp", "127.0.0.1:8081"); err != nil {
 		log.Fatalf("dialing:%v", err)
 	} else if err = c.Call("Arith.Add", args, reply); err != nil {
 		log.Printf("error : %v", err)
 	} else {
+		c.Close()
 		log.Printf("侬好")
 	}
 }
