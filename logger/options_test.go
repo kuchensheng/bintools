@@ -3,13 +3,12 @@ package logger
 import (
 	"context"
 	"errors"
-	"os"
 	"sync"
 	"testing"
 	"time"
 )
 
-var logger = New()
+var logger = GlobalLogger
 
 func TestTrace(t *testing.T) {
 	logger.Trace("%v", "我是trace")
@@ -26,9 +25,9 @@ func TestLogger_WithContext(t *testing.T) {
 }
 
 func BenchmarkLogger_Info(b *testing.B) {
-	w, _ := os.OpenFile("log.log", os.O_CREATE|os.O_APPEND|os.O_RDWR, 755)
-	logger = logger.MultiWriter(w, os.Stdout)
-	logger.Info("%s%s", "库陈胜", "帅吗？")
+	//w, _ := os.OpenFile("log.log", os.O_CREATE|os.O_APPEND|os.O_RDWR, 755)
+	//logger = logger.MultiWriter(w, os.Stdout)
+	//logger.Info("%s%s", "库陈胜", "帅吗？")
 	now := time.Now().UnixMilli()
 	counter := b.N
 	var sw sync.WaitGroup

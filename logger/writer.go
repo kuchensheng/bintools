@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -67,10 +68,13 @@ type FileLevelWriter struct {
 func (l Logger) NewFileLevelWriter(lvl Level) *FileLevelWriter {
 	w := &FileLevelWriter{}
 	w.level = lvl
-	linkName := l.appName + "-" + lvl.GetName() + ".log"
-	original := l.appName + "-" + lvl.GetName() + time.Now().Format(timeLayout) + ".log"
+	if _, e := os.ReadDir(l.logHome); e != nil && os.IsNotExist(e) {
+		os.MkdirAll(l.logHome, 666)
+	}
+	linkName := filepath.Join(l.logHome, l.appName+"-"+lvl.GetName()+".log")
+	original := filepath.Join(l.logHome, l.appName+"-"+lvl.GetName()+time.Now().Format(timeLayout)+".log")
 	f := func(dst string, log Logger) *os.File {
-		f, e := os.Create(dst)
+		f, e := os.OpenFile(dst, os.O_CREATE|os.O_APPEND|os.O_RDWR, 666)
 		if e != nil {
 			log.Error("无法创建日志文件,%s,%v", dst, e)
 			return nil

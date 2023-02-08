@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -89,7 +90,7 @@ type Logger struct {
 	logHome     string
 }
 
-var GlobalLogger = New()
+var GlobalLogger = New().SimpleWriter()
 
 func New() Logger {
 	l := Logger{
@@ -125,6 +126,7 @@ func New() Logger {
 		},
 		spec:      Spec,
 		splitSize: SplitSize << 20,
+		logHome:   filepath.Join(pwd(), "logs"),
 	}
 	l.writer = multiWriter{[]io.Writer{&syncWriter{w: os.Stdout, l: l}}}
 	l.formatter.caller = func(skip int) string {
@@ -292,7 +294,7 @@ func write(writers []io.Writer, p []byte) (err error) {
 func (l Logger) getWriter(lvl Level) []io.Writer {
 	var result []io.Writer
 	for _, writer := range l.writer.writers {
-		if w, ok := writer.(FileLevelWriter); ok && w.level == lvl {
+		if w, ok := writer.(*FileLevelWriter); ok && w.level == lvl {
 			result = append(result, w)
 		} else if w1, ok1 := writer.(*os.File); ok1 {
 			result = append(result, w1)

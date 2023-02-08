@@ -586,7 +586,7 @@ func (c *Context) Recovery() {
 }
 
 func (c *Context) Logger() logger.Logger {
-	l := logger.GlobalLogger
+	l := logger.GlobalLogger.SimpleWriter()
 	v, ok := c.Get(LoggerKey)
 	if !ok {
 		return l
