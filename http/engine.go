@@ -26,8 +26,8 @@ type engine struct {
 }
 
 func Default() *engine {
-	return &engine{
-		handlers: HandlersChain{GrpcContext},
+	e := &engine{
+		//handlers: HandlersChain{LoggerMiddleWare, GrpcContext},
 		pool: sync.Pool{
 			New: func() any {
 				return &Context{}
@@ -35,6 +35,8 @@ func Default() *engine {
 		},
 		routes: NewTrie(),
 	}
+	e.Use(LoggerMiddleWare, GrpcContext)
+	return e
 }
 
 func (e *engine) Use(middlewares ...HandlerFunc) {

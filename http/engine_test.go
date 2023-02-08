@@ -24,6 +24,7 @@ func TestEngine_Get(t *testing.T) {
 		ctx.Set("my", "库陈胜")
 		ctx.Next()
 		name := ctx.GetString("name")
+		ctx.Logger().Info("你好,%s", name)
 		t.Logf("name = %s", name)
 	})
 

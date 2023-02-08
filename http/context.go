@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/kuchensheng/bintools/http/util"
+	"github.com/kuchensheng/bintools/logger"
 	"gopkg.in/yaml.v3"
 	"io"
 	"io/ioutil"
@@ -582,6 +583,18 @@ func (c *Context) Recovery() {
 		c.JSON(http.StatusInternalServerError, NewError(x))
 		c.Abort()
 	}
+}
+
+func (c *Context) Logger() logger.Logger {
+	l := logger.GlobalLogger
+	v, ok := c.Get(LoggerKey)
+	if !ok {
+		return l
+	}
+	if log, r := v.(logger.Logger); r {
+		l = log
+	}
+	return l
 }
 
 func trace(msg string) string {

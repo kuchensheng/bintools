@@ -4,6 +4,8 @@ go 1.18
 
 require (
 	github.com/golang/protobuf v1.5.2
+	github.com/google/uuid v1.3.0
+	github.com/kuchensheng/bintools/logger v0.0.7
 	google.golang.org/grpc v1.52.3
 	gopkg.in/yaml.v3 v3.0.1
 )
