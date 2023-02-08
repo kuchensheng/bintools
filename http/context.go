@@ -494,6 +494,15 @@ func (c *Context) Cookie(name string) (string, error) {
 	return val, nil
 }
 
+func (c *Context) SetHeader(key string, value string) {
+	header := c.Request.Header
+	if header == nil {
+		header = make(map[string][]string)
+		c.Request.Header = header
+	}
+	c.Request.Header.Set(key, value)
+}
+
 // GetHeader returns value from request headers.
 func (c *Context) GetHeader(key string) string {
 	return c.Request.Header.Get(key)

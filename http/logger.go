@@ -15,6 +15,7 @@ var LoggerMiddleWare = func(ctx *Context) {
 	traceId := ctx.GetHeader(T_HEADER_TRACEID)
 	if traceId == "" {
 		traceId = uuid.NewString()
+		ctx.SetHeader(T_HEADER_TRACEID, traceId)
 	}
 	l = l.TraceId(traceId)
 	ctx.Set(LoggerKey, l)
