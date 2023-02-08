@@ -60,11 +60,13 @@ type FileLevelWriter struct {
 	*os.File
 	link     string
 	original string
+	level    Level
 }
 
 //NewFileLevelWriter return file writer,it's name is appName-lvl-time.log,eg: myApp-info.log and link myApp-info-20230208.${idx}.log
 func (l Logger) NewFileLevelWriter(lvl Level) *FileLevelWriter {
 	w := &FileLevelWriter{}
+	w.level = lvl
 	linkName := l.appName + "-" + lvl.GetName() + ".log"
 	original := l.appName + "-" + lvl.GetName() + time.Now().Format(timeLayout) + ".log"
 	f := func(dst string, log Logger) *os.File {

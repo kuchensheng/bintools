@@ -273,6 +273,30 @@ func (l Logger) WriteLevel(lvl Level, msgFmt string, args ...any) error {
 	b.Reset()
 	b.WriteString(msg)
 	defer l.buffer.Put(b)
-	_, err := l.writer.Write(b.Bytes())
+	return write(l.getWriter(lvl), b.Bytes())
+}
+
+func write(writers []io.Writer, p []byte) (err error) {
+	for _, w := range writers {
+		if _n, _err := w.Write(p); err == nil {
+			if _err != nil {
+				err = _err
+			} else if _n != len(p) {
+				err = io.ErrShortWrite
+			}
+		}
+	}
 	return err
+}
+
+func (l Logger) getWriter(lvl Level) []io.Writer {
+	var result []io.Writer
+	for _, writer := range l.writer.writers {
+		if w, ok := writer.(FileLevelWriter); ok && w.level == lvl {
+			result = append(result, w)
+		} else if w1, ok1 := writer.(*os.File); ok1 {
+			result = append(result, w1)
+		}
+	}
+	return result
 }
