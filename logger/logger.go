@@ -59,6 +59,10 @@ var (
 	}
 	FmtYmdHmsSSS = "2006-01-02 15:04:05,000"
 	TRACEID      = "t-head-traceId"
+	//SplitSize 每个日志文件的最大值，单位MB
+	SplitSize = int64(100)
+	//Spec 每天零时执行日志分割
+	Spec = "0 0 0 * * ?"
 )
 
 type CallerFun func(skip int) string
@@ -80,6 +84,9 @@ type Logger struct {
 	FormatLevel FormatLevelFun
 	buffer      sync.Pool
 	Keys        map[string]any
+	spec        string
+	splitSize   int64
+	logHome     string
 }
 
 func New() Logger {
@@ -114,8 +121,10 @@ func New() Logger {
 				return &bytes.Buffer{}
 			},
 		},
+		spec:      Spec,
+		splitSize: SplitSize << 20,
 	}
-	l.writer = multiWriter{[]logWriter{&syncWriter{w: os.Stdout, l: l}}}
+	l.writer = multiWriter{[]io.Writer{&syncWriter{w: os.Stdout, l: l}}}
 	l.formatter.caller = func(skip int) string {
 		_, file, line, _ := runtime.Caller(skip)
 		return fmt.Sprintf("%s:%d", file, line)
@@ -161,10 +170,40 @@ func (l Logger) Output(w io.Writer) Logger {
 }
 
 func (l Logger) MultiWriter(writers ...io.Writer) Logger {
-	var logWriters []logWriter
+	var logWriters []io.Writer
 	for _, writer := range writers {
 		logWriters = append(logWriters, syncWriter{writer, l})
 	}
+	l.writer.writers = logWriters
+	return l
+}
+
+func (l Logger) SimpleWriter() Logger {
+	var logWriters []io.Writer
+	logWriters = append(logWriters, os.Stdout)
+	//Trace
+	enable := func(lvl Level, log Logger) bool {
+		return lvl >= log.level
+	}
+
+	if enable(TraceLevel, l) {
+		logWriters = append(logWriters, l.NewFileLevelWriter(TraceLevel))
+	}
+	if enable(DebugLevel, l) {
+		logWriters = append(logWriters, l.NewFileLevelWriter(DebugLevel))
+	}
+	if enable(InfoLevel, l) {
+		logWriters = append(logWriters, l.NewFileLevelWriter(InfoLevel))
+	}
+	if enable(WarnLevel, l) {
+		logWriters = append(logWriters, l.NewFileLevelWriter(WarnLevel))
+	}
+	if enable(ErrorLevel, l) {
+		logWriters = append(logWriters, l.NewFileLevelWriter(ErrorLevel))
+	}
+
+	logWriters = append(logWriters, l.NewFileLevelWriter(PanicLevel))
+	logWriters = append(logWriters, l.NewFileLevelWriter(FatalLevel))
 	l.writer.writers = logWriters
 	return l
 }
@@ -193,6 +232,16 @@ func (l Logger) dict() string {
 		}
 	}
 	return ""
+}
+
+func (l Logger) TraceId(traceId string) Logger {
+	c := l.ctx
+	if c == nil {
+		c = context.TODO()
+	}
+	c = context.WithValue(c, TRACEID, traceId)
+	l.ctx = c
+	return l
 }
 
 func (l Logger) traceId() string {

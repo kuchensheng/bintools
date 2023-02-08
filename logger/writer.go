@@ -3,6 +3,8 @@ package logger
 import (
 	"fmt"
 	"io"
+	"os"
+	"time"
 )
 
 type logWriter interface {
@@ -37,7 +39,7 @@ func (w syncWriter) Msg(msg string) error {
 }
 
 type multiWriter struct {
-	writers []logWriter
+	writers []io.Writer
 }
 
 func (m multiWriter) Write(p []byte) (n int, err error) {
@@ -52,4 +54,32 @@ func (m multiWriter) Write(p []byte) (n int, err error) {
 		}
 	}
 	return n, err
+}
+
+type FileLevelWriter struct {
+	*os.File
+	link     string
+	original string
+}
+
+//NewFileLevelWriter return file writer,it's name is appName-lvl-time.log,eg: myApp-info.log and link myApp-info-20230208.${idx}.log
+func (l Logger) NewFileLevelWriter(lvl Level) *FileLevelWriter {
+	w := &FileLevelWriter{}
+	linkName := l.appName + "-" + lvl.GetName() + ".log"
+	original := l.appName + "-" + lvl.GetName() + time.Now().Format(timeLayout) + ".log"
+	f := func(dst string, log Logger) *os.File {
+		f, e := os.Create(dst)
+		if e != nil {
+			log.Error("无法创建日志文件,%s,%v", dst, e)
+			return nil
+		} else {
+			return f
+		}
+	}
+	writer := f(original, l)
+	w.File = writer
+	w.original = original
+	w.link = linkName
+	_ = os.Symlink(original, linkName)
+	return w
 }
