@@ -89,6 +89,8 @@ type Logger struct {
 	logHome     string
 }
 
+var GlobalLogger = New()
+
 func New() Logger {
 	l := Logger{
 		level:      InfoLevel,

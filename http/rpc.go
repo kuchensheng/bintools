@@ -2,7 +2,7 @@ package http
 
 import (
 	"fmt"
-	"log"
+	"github.com/kuchensheng/bintools/logger/global"
 	"net"
 	"net/rpc"
 )
@@ -17,7 +17,7 @@ func (e *engine) RunRpc(port int) {
 	if e.RpcServer {
 		fmt.Printf("starting server with rpc support,port:%d...\n", port)
 		if l, err := net.Listen("tcp", fmt.Sprintf(":%d", port)); err != nil {
-			log.Fatal("can not start rpc server,err is ", err)
+			global.Logger.FatalLevel(fmt.Sprintf("can not start rpc server,err is %v", err))
 		} else {
 			go rpc.Accept(l)
 			rpc.HandleHTTP()

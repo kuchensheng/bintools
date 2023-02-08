@@ -2,7 +2,6 @@ package logger
 
 import (
 	"fmt"
-	"github.com/kuchensheng/bintools/logger/global"
 	"github.com/kuchensheng/bintools/logger/rotate"
 	"io/fs"
 	"io/ioutil"
@@ -21,7 +20,7 @@ var (
 )
 
 func init() {
-	var logger = global.Logger
+	var logger = GlobalLogger
 	loggerTask := rotate.New()
 
 	changeWriter := func(old *FileLevelWriter) {
@@ -38,11 +37,11 @@ func init() {
 			}
 		}
 	}
-	global.Logger = logger
+	GlobalLogger = logger
 	loggerTask.AddFunc(logger.spec, fileHandler)
 	loggerTask.AddFunc(checkSpec, func() {
 		logger.Info("检查文件大小")
-		for _, writer := range global.Logger.writer.writers {
+		for _, writer := range GlobalLogger.writer.writers {
 			if fw, ok := writer.(*FileLevelWriter); ok {
 				fi, _ := fw.Stat()
 				if fi.Size() >= logger.splitSize {
@@ -59,7 +58,7 @@ func newLogFile(old *os.File) *os.File {
 	dstLog := dst + suffix
 	dir := filepath.Dir(old.Name())
 	if files, err := ioutil.ReadDir(dir); err != nil {
-		global.Logger.Error("无法打开根目录[%s],%v", dir, err)
+		GlobalLogger.Error("无法打开根目录[%s],%v", dir, err)
 		return nil
 	} else {
 		one := lastOneByTime(files, func(item fs.FileInfo) bool {
@@ -68,7 +67,7 @@ func newLogFile(old *os.File) *os.File {
 		fn := func(dst string) *os.File {
 			f, e := os.Create(dst)
 			if e != nil {
-				global.Logger.Error("无法创建日志文件,%s,%v", dst, e)
+				GlobalLogger.Error("无法创建日志文件,%s,%v", dst, e)
 				return nil
 			} else {
 				return f
