@@ -248,7 +248,7 @@ func (l Logger) TraceId(traceId string) Logger {
 	return l
 }
 
-func (l Logger) traceId() string {
+func (l *Logger) traceId() string {
 	c := l.ctx
 	if c == nil {
 		return ""
@@ -260,17 +260,7 @@ func (l Logger) traceId() string {
 	return fmt.Sprintf("%s", v)
 }
 
-func (l Logger) msg(lvl Level, msgFmt string, args ...any) string {
-	caller := l.formatter.caller(l.callerSkip)
-	time := l.formatter.timeFmt(l.FormatTime)
-	level := l.formatter.levelFmt(lvl.GetName())
-	msg := fmt.Sprintf(msgFmt, args...)
-	msg = fmt.Sprintf("%s %s %s [%s] %s %s %s : %s\n", time, hostName, l.appName, l.traceId(), level, caller, l.dict(), msg)
-	return msg
-}
-
-func (l Logger) WriteLevel(lvl Level, msgFmt string, args ...any) error {
-	msg := l.msg(lvl, msgFmt, args...)
+func (l *Logger) WriteLevel(lvl Level, msg string) error {
 	b := l.buffer.Get().(*bytes.Buffer)
 	b.Reset()
 	b.WriteString(msg)
