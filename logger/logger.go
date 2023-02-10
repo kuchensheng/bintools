@@ -268,7 +268,11 @@ func (l *Logger) WriteLevel(lvl Level, msg string) error {
 	return write(l.getWriter(lvl), b.Bytes())
 }
 
+var wLock sync.Mutex
+
 func write(writers []io.Writer, p []byte) (err error) {
+	wLock.Lock()
+	defer wLock.Unlock()
 	for _, w := range writers {
 		if _n, _err := w.Write(p); err == nil {
 			if _err != nil {
