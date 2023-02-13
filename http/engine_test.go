@@ -2,7 +2,10 @@ package http
 
 import (
 	"encoding/json"
+	"io/ioutil"
+	"net/http"
 	"runtime"
+	"sync"
 	"testing"
 	"time"
 )
@@ -24,7 +27,8 @@ func TestEngine_Get(t *testing.T) {
 		ctx.Set("my", "库陈胜")
 		ctx.Next()
 		name := ctx.GetString("name")
-		ctx.Logger().Info("你好,%s", name)
+		logger := ctx.Logger()
+		logger.Info("你好,%s", name)
 		t.Logf("name = %s", name)
 	})
 
@@ -156,7 +160,8 @@ func TestEngine_GetWithUse(t *testing.T) {
 		a, _ := ctx.GetQuery("a")
 		t.Logf("a = %s", a)
 		ctx.Set("name", "酷达舒")
-		t.Logf("b= %s", ctx.GetString("b"))
+		b, _ := ctx.GetQuery("b")
+		t.Logf("b= %s", b)
 		ctx.JSON(200, testError{
 			Code:    0,
 			Message: "成功",
@@ -167,4 +172,23 @@ func TestEngine_GetWithUse(t *testing.T) {
 		})
 	})
 	e.Run(8080)
+}
+
+func BenchmarkEngine_Get(b *testing.B) {
+	wg := sync.WaitGroup{}
+	wg.Add(b.N)
+	for i := 0; i < b.N; i++ {
+		go func(idx int) {
+			if r, e := http.Get("http://localhost:8080/api/test?a=库陈胜ccc&b=帅不帅"); e != nil {
+				b.Log(e)
+			} else {
+				data, _ := ioutil.ReadAll(r.Body)
+				var result interface{}
+				_ = json.Unmarshal(data, &result)
+				b.Log(result)
+			}
+			wg.Done()
+		}(i)
+	}
+	wg.Wait()
 }

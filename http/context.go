@@ -550,6 +550,13 @@ func (c *Context) Status(code int) {
 // It also sets the Content-Type as "application/json".
 func (c *Context) JSON(code int, obj any) {
 	c.Status(code)
+	if r, ok := obj.(Result); ok {
+		obj = r
+	} else if e, ok1 := obj.(error); ok1 {
+		obj = e
+	} else {
+		obj = Result{0, "成功", obj}
+	}
 	marshal, _ := json.Marshal(obj)
 	header := c.Writer.Header()
 	header["Content-Type"] = []string{"application/json"}
@@ -557,7 +564,7 @@ func (c *Context) JSON(code int, obj any) {
 }
 
 func (c *Context) JSONoK(obj any) {
-	c.JSON(http.StatusOK, obj)
+	c.JSON(http.StatusOK, Result{0, "成功", obj})
 }
 
 // YAML serializes the given struct as YAML into the response body.
