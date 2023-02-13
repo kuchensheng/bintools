@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 )
 
@@ -62,6 +63,7 @@ type FileLevelWriter struct {
 	link     string
 	original string
 	level    Level
+	lock     sync.Mutex
 }
 
 //NewFileLevelWriter return file writer,it's name is appName-lvl-time.log,eg: myApp-info.log and link myApp-info-20230208.${idx}.log
@@ -75,6 +77,7 @@ func (l _Logger) NewFileLevelWriter(lvl Level) *FileLevelWriter {
 	original := filepath.Join(l.logHome, l.appName+"-"+lvl.GetName()+time.Now().Format(timeLayout)+".log")
 	w.original = original
 	w.link = linkName
+	w.lock = sync.Mutex{}
 	return w
 }
 

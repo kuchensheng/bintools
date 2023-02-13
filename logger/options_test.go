@@ -26,6 +26,24 @@ func TestLogger_WithContext(t *testing.T) {
 	logger = logger.WithContext(context.WithValue(context.TODO(), "my", "1-2"))
 }
 
+func TestLogger(t *testing.T) {
+	now := time.Now().UnixMilli()
+	counter := 3000
+	var sw sync.WaitGroup
+	sw.Add(counter)
+	l := logger
+	l.CallerSkip(3)
+	for i := 0; i < counter; i++ {
+		go func(idx int) {
+			logger.Info("%s%s,%6d", "库陈胜", "帅", i)
+			sw.Done()
+		}(i)
+	}
+	sw.Wait()
+	now1 := time.Now().UnixMilli()
+	logger.Info("执行完毕,耗时：%d ms", now1-now)
+}
+
 func BenchmarkLogger_Info(b *testing.B) {
 	//w, _ := os.OpenFile("log.log", os.O_CREATE|os.O_APPEND|os.O_RDWR, 755)
 	//logger = logger.MultiWriter(w, os.Stdout)
@@ -38,7 +56,7 @@ func BenchmarkLogger_Info(b *testing.B) {
 	l.CallerSkip(3)
 	for i := 0; i < counter; i++ {
 		go func(idx int) {
-			logger.Info("%s%s,%s", "库陈胜", "帅", time.Now())
+			l.Info("%s%s,%s", "库陈胜", "帅", time.Now())
 			sw.Done()
 		}(i)
 	}
