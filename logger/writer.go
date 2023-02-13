@@ -16,7 +16,7 @@ type logWriter interface {
 
 type syncWriter struct {
 	w io.Writer
-	l _Logger
+	l Logger
 }
 
 func (w syncWriter) Write(p []byte) (n int, err error) {
@@ -67,7 +67,7 @@ type FileLevelWriter struct {
 }
 
 //NewFileLevelWriter return file writer,it's name is appName-lvl-time.log,eg: myApp-info.log and link myApp-info-20230208.${idx}.log
-func (l _Logger) NewFileLevelWriter(lvl Level) *FileLevelWriter {
+func (l Logger) NewFileLevelWriter(lvl Level) *FileLevelWriter {
 	w := &FileLevelWriter{}
 	w.level = lvl
 	if _, e := os.ReadDir(l.logHome); e != nil && os.IsNotExist(e) {
@@ -81,7 +81,7 @@ func (l _Logger) NewFileLevelWriter(lvl Level) *FileLevelWriter {
 	return w
 }
 
-func (w *FileLevelWriter) CreateWriter(dst, link string, log _Logger) {
+func (w *FileLevelWriter) CreateWriter(dst, link string, log Logger) {
 	f, e := os.OpenFile(dst, os.O_CREATE|os.O_APPEND|os.O_RDWR, 666)
 	if e != nil {
 		log.Error("无法创建日志文件,%s,%v", dst, e)
