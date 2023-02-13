@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"fmt"
+	"github.com/kuchensheng/bintools/logger"
 	"log"
 	"net/http"
 	"os"
@@ -23,6 +24,8 @@ type engine struct {
 	routes *trie
 
 	RpcServer bool
+
+	pprof bool
 }
 
 func Default() *engine {
@@ -34,9 +37,14 @@ func Default() *engine {
 			},
 		},
 		routes: NewTrie(),
+		pprof:  false,
 	}
 	e.Use(LoggerMiddleWare, GrpcContext)
 	return e
+}
+
+func (e *engine) Pprof(open bool) {
+	e.pprof = open
 }
 
 func (e *engine) Use(middlewares ...HandlerFunc) {
@@ -117,9 +125,13 @@ func (e *engine) registerRouter(method, pattern string, handlers ...HandlerFunc)
 		Path:    pattern,
 		Handler: append(e.handlers, handlers...),
 	})
+	logger.GlobalLogger.Info("注册路由规则:Method [%s],Pattern [%s]", method, pattern)
 }
 
 func (e *engine) Run(port int) {
+	if e.pprof {
+		e.pprofRouteRegister()
+	}
 	e.RunRpc(port + 1)
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", port),
