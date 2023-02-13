@@ -3,8 +3,6 @@ package logger
 import (
 	"context"
 	"errors"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"sync"
 	"testing"
 	"time"
@@ -108,22 +106,4 @@ func TestLogger_FatalLevel(t *testing.T) {
 func TestLogger_Dict(t *testing.T) {
 	logger.Dict("name", "kucs")
 	logger.Info("%s", "你好")
-}
-
-func BenchmarkZeroLogInfo(b *testing.B) {
-	zLog := log.Logger
-	zLog = zLog.Output(zerolog.MultiLevelWriter(logger.writer.writers...)).With().Caller().Logger()
-	now := time.Now().UnixMilli()
-	counter := b.N
-	var sw sync.WaitGroup
-	sw.Add(counter)
-	for i := 0; i < counter; i++ {
-		go func(idx int) {
-			zLog.Info().Msgf("%s%s,%s", "库陈胜", "帅", time.Now())
-			sw.Done()
-		}(i)
-	}
-	sw.Wait()
-	now1 := time.Now().UnixMilli()
-	zLog.Info().Msgf("执行完毕,耗时：%d ms", now1-now)
 }
