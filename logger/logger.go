@@ -74,7 +74,7 @@ type LogFormatter struct {
 	levelFmt FormatLevelFun
 }
 
-type Logger struct {
+type _Logger struct {
 	writer      multiWriter
 	ctx         context.Context
 	level       Level
@@ -92,8 +92,8 @@ type Logger struct {
 
 var GlobalLogger = New().SimpleWriter()
 
-func New() Logger {
-	l := Logger{
+func New() _Logger {
+	l := _Logger{
 		level:      InfoLevel,
 		callerSkip: 4,
 		formatter: LogFormatter{
@@ -137,43 +137,43 @@ func New() Logger {
 	return l
 }
 
-func NewWithCtx(ctx context.Context) Logger {
+func NewWithCtx(ctx context.Context) _Logger {
 	l := New()
 	l.ctx = ctx
 	return l
 }
 
-func (l *Logger) WithContext(ctx context.Context) Logger {
+func (l *_Logger) WithContext(ctx context.Context) _Logger {
 	l.ctx = ctx
 	return *l
 }
-func (l Logger) AppName(appName string) Logger {
+func (l _Logger) AppName(appName string) _Logger {
 	l.appName = appName
 	return l
 }
 
-func (l Logger) FormatCaller(fun CallerFun) Logger {
+func (l _Logger) FormatCaller(fun CallerFun) _Logger {
 	l.formatter.caller = fun
 	return l
 }
 
-func (l Logger) CallerSkip(skip int) Logger {
+func (l _Logger) CallerSkip(skip int) _Logger {
 	l.callerSkip = skip
 	return l
 }
 
-func (l Logger) LevelFormatter(fun FormatLevelFun) Logger {
+func (l _Logger) LevelFormatter(fun FormatLevelFun) _Logger {
 	l.formatter.levelFmt = fun
 	return l
 }
-func (l Logger) Output(w io.Writer) Logger {
+func (l _Logger) Output(w io.Writer) _Logger {
 	w1 := l.writer.writers
 	w1 = append(w1, syncWriter{w, l})
 	l.writer.writers = w1
 	return l
 }
 
-func (l Logger) MultiWriter(writers ...io.Writer) Logger {
+func (l _Logger) MultiWriter(writers ...io.Writer) _Logger {
 	var logWriters []io.Writer
 	for _, writer := range writers {
 		logWriters = append(logWriters, syncWriter{writer, l})
@@ -182,11 +182,11 @@ func (l Logger) MultiWriter(writers ...io.Writer) Logger {
 	return l
 }
 
-func (l Logger) SimpleWriter() Logger {
+func (l _Logger) SimpleWriter() _Logger {
 	var logWriters []io.Writer
 	logWriters = append(logWriters, os.Stdout)
 	//Trace
-	enable := func(lvl Level, log Logger) bool {
+	enable := func(lvl Level, log _Logger) bool {
 		return lvl >= log.level
 	}
 
@@ -212,12 +212,12 @@ func (l Logger) SimpleWriter() Logger {
 	return l
 }
 
-func (l Logger) Level(level Level) Logger {
+func (l _Logger) Level(level Level) _Logger {
 	l.level = level
 	return l
 }
 
-func (l *Logger) Dict(key string, value any) {
+func (l *_Logger) Dict(key string, value any) {
 	c := l.ctx
 	if c == nil {
 		c = context.TODO()
@@ -227,7 +227,7 @@ func (l *Logger) Dict(key string, value any) {
 	l.ctx = c
 }
 
-func (l Logger) dict() string {
+func (l _Logger) dict() string {
 	if len(l.Keys) > 0 {
 		if data, e := json.Marshal(l.Keys); e != nil {
 			return ""
@@ -238,7 +238,7 @@ func (l Logger) dict() string {
 	return ""
 }
 
-func (l Logger) TraceId(traceId string) Logger {
+func (l _Logger) TraceId(traceId string) _Logger {
 	c := l.ctx
 	if c == nil {
 		c = context.TODO()
@@ -248,7 +248,7 @@ func (l Logger) TraceId(traceId string) Logger {
 	return l
 }
 
-func (l *Logger) traceId() string {
+func (l *_Logger) traceId() string {
 	c := l.ctx
 	if c == nil {
 		return ""
@@ -260,7 +260,7 @@ func (l *Logger) traceId() string {
 	return fmt.Sprintf("%s", v)
 }
 
-func (l *Logger) WriteLevel(lvl Level, msg string) error {
+func (l *_Logger) WriteLevel(lvl Level, msg string) error {
 	b := l.buffer.Get().(*bytes.Buffer)
 	b.Reset()
 	b.WriteString(msg)
@@ -285,7 +285,7 @@ func write(writers []io.Writer, p []byte) (err error) {
 	return err
 }
 
-func (l Logger) getWriter(lvl Level) []io.Writer {
+func (l _Logger) getWriter(lvl Level) []io.Writer {
 	var result []io.Writer
 	for _, writer := range l.writer.writers {
 		if w, ok := writer.(*FileLevelWriter); ok && w.level == lvl {

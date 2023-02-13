@@ -8,7 +8,7 @@ import (
 	"sync"
 )
 
-func (l Logger) enabled(lvl Level) bool {
+func (l _Logger) enabled(lvl Level) bool {
 	return lvl >= l.level
 }
 
@@ -20,10 +20,13 @@ var bytesPool = sync.Pool{
 	},
 }
 
-func (l *Logger) msg(lvl Level, msgFmt string, args ...any) string {
+func (l *_Logger) msg(lvl Level, msgFmt string, args ...any) string {
 	//todo 字符串拼接而非直接创建字符串
 	bs := bytesPool.Get().(bytes.Buffer)
-	defer bytesPool.Put(bs)
+	defer func(buffer bytes.Buffer) {
+		buffer.Reset()
+		defer bytesPool.Put(buffer)
+	}(bs)
 	bs.Reset()
 	bs.WriteString(l.formatter.timeFmt(l.FormatTime))
 	bs.WriteRune(space)
@@ -43,28 +46,28 @@ func (l *Logger) msg(lvl Level, msgFmt string, args ...any) string {
 	return bs.String()
 }
 
-func (l Logger) Trace(format string, args ...any) {
+func (l _Logger) Trace(format string, args ...any) {
 	if l.enabled(TraceLevel) {
 		msg := l.msg(TraceLevel, format, args...)
 		_ = l.WriteLevel(TraceLevel, msg)
 	}
 }
 
-func (l Logger) Debug(format string, args ...any) {
+func (l _Logger) Debug(format string, args ...any) {
 	if l.enabled(DebugLevel) {
 		msg := l.msg(DebugLevel, format, args...)
 		_ = l.WriteLevel(DebugLevel, msg)
 	}
 }
 
-func (l *Logger) Info(format string, args ...any) {
+func (l *_Logger) Info(format string, args ...any) {
 	if l.enabled(InfoLevel) {
 		msg := l.msg(InfoLevel, format, args...)
 		_ = l.WriteLevel(InfoLevel, msg)
 	}
 }
 
-func (l Logger) Warn(format string, args ...any) {
+func (l _Logger) Warn(format string, args ...any) {
 	if l.enabled(WarnLevel) {
 		format += "\n%-6s"
 		args = append(args, debug.Stack())
@@ -73,7 +76,7 @@ func (l Logger) Warn(format string, args ...any) {
 	}
 }
 
-func (l Logger) Error(format string, args ...any) {
+func (l _Logger) Error(format string, args ...any) {
 	if l.enabled(ErrorLevel) {
 		format += "\n%-6s"
 		args = append(args, debug.Stack())
@@ -82,7 +85,7 @@ func (l Logger) Error(format string, args ...any) {
 	}
 }
 
-func (l Logger) Panic(info any) {
+func (l _Logger) Panic(info any) {
 	msg := ""
 	if v, ok := info.(error); ok {
 		msg = v.Error()
@@ -93,7 +96,7 @@ func (l Logger) Panic(info any) {
 	panic(info)
 }
 
-func (l Logger) FatalLevel(info any) {
+func (l _Logger) FatalLevel(info any) {
 	msg := ""
 	if v, ok := info.(error); ok {
 		msg = v.Error()
