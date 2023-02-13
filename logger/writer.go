@@ -73,19 +73,17 @@ func (l Logger) NewFileLevelWriter(lvl Level) *FileLevelWriter {
 	}
 	linkName := filepath.Join(l.logHome, l.appName+"-"+lvl.GetName()+".log")
 	original := filepath.Join(l.logHome, l.appName+"-"+lvl.GetName()+time.Now().Format(timeLayout)+".log")
-	f := func(dst string, log Logger) *os.File {
-		f, e := os.OpenFile(dst, os.O_CREATE|os.O_APPEND|os.O_RDWR, 666)
-		if e != nil {
-			log.Error("无法创建日志文件,%s,%v", dst, e)
-			return nil
-		} else {
-			return f
-		}
-	}
-	writer := f(original, l)
-	w.File = writer
 	w.original = original
 	w.link = linkName
-	_ = os.Symlink(original, linkName)
 	return w
+}
+
+func (w *FileLevelWriter) CreateWriter(dst, link string, log Logger) {
+	f, e := os.OpenFile(dst, os.O_CREATE|os.O_APPEND|os.O_RDWR, 666)
+	if e != nil {
+		log.Error("无法创建日志文件,%s,%v", dst, e)
+	} else {
+		_ = os.Symlink(dst, link)
+		w.File = f
+	}
 }

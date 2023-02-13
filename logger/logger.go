@@ -289,6 +289,9 @@ func (l Logger) getWriter(lvl Level) []io.Writer {
 	var result []io.Writer
 	for _, writer := range l.writer.writers {
 		if w, ok := writer.(*FileLevelWriter); ok && w.level == lvl {
+			if w.File == nil {
+				w.CreateWriter(w.original, w.link, l)
+			}
 			result = append(result, w)
 		} else if w1, ok1 := writer.(*os.File); ok1 {
 			result = append(result, w1)

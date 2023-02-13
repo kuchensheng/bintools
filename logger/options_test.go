@@ -34,6 +34,8 @@ func BenchmarkLogger_Info(b *testing.B) {
 	counter := b.N
 	var sw sync.WaitGroup
 	sw.Add(counter)
+	l := logger
+	l.CallerSkip(3)
 	for i := 0; i < counter; i++ {
 		go func(idx int) {
 			logger.Info("%s%s,%s", "库陈胜", "帅", time.Now())

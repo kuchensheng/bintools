@@ -1,24 +1,46 @@
 package logger
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"runtime/debug"
-	"strings"
+	"sync"
 )
 
 func (l Logger) enabled(lvl Level) bool {
 	return lvl >= l.level
 }
 
+const space = ' '
+
+var bytesPool = sync.Pool{
+	New: func() any {
+		return bytes.Buffer{}
+	},
+}
+
 func (l *Logger) msg(lvl Level, msgFmt string, args ...any) string {
 	//todo 字符串拼接而非直接创建字符串
-	caller := l.formatter.caller(l.callerSkip)
-	time := l.formatter.timeFmt(l.FormatTime)
-	level := l.formatter.levelFmt(lvl.GetName())
-	var items []string
-	items = append(items, time, hostName, l.appName, l.traceId(), level, caller, l.dict(), fmt.Sprintf(msgFmt, args...), "\n")
-	return strings.Join(items, " ")
+	bs := bytesPool.Get().(bytes.Buffer)
+	defer bytesPool.Put(bs)
+	bs.Reset()
+	bs.WriteString(l.formatter.timeFmt(l.FormatTime))
+	bs.WriteRune(space)
+	bs.WriteString(hostName)
+	bs.WriteRune(space)
+	bs.WriteString(l.appName)
+	bs.WriteRune(space)
+	bs.WriteString(l.traceId())
+	bs.WriteString(l.formatter.levelFmt(lvl.GetName()))
+	bs.WriteRune(space)
+	bs.WriteString(l.formatter.caller(l.callerSkip))
+	bs.WriteRune(space)
+	bs.WriteString(l.dict())
+	bs.WriteRune(space)
+	bs.WriteString(fmt.Sprintf(msgFmt, args...))
+	bs.WriteRune('\n')
+	return bs.String()
 }
 
 func (l Logger) Trace(format string, args ...any) {
