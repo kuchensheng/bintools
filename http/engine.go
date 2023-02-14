@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/kuchensheng/bintools/logger"
 	"log"
@@ -49,6 +50,78 @@ func (e *engine) Pprof(open bool) {
 
 func (e *engine) Use(middlewares ...HandlerFunc) {
 	e.handlers = append(e.handlers, middlewares...)
+}
+
+func handlerParam2Fun(paramFunc HandlerParamFunc, params ...HandlerParam) func(ctx *Context) {
+	return func(ctx *Context) {
+		log := ctx.Logger()
+		var paramValues []HandlerParam
+		for _, param := range params {
+			if q, ok := param.(QueryParam); ok {
+				if v, find := ctx.GetQuery(q.Name()); !find && q.Required() {
+					log.Info("缺少请求参数：%s", q.Name())
+					e := BADREQUEST
+					e.Data = "缺少请求参数:" + q.Name()
+					ctx.JSON(http.StatusBadRequest, e)
+					ctx.Next()
+					return
+				} else {
+					q.value = v
+					paramValues = append(paramValues, q)
+				}
+			} else if b, ok := param.(BodyParam); ok {
+				data, _ := ctx.GetRawDataNoClose()
+				if len(data) == 0 {
+					if b.Required() || ctx.Request.Method == http.MethodPost || ctx.Request.Method == http.MethodPut {
+						e := BADREQUEST
+						e.Data = "请求体不能为空"
+						ctx.JSON(http.StatusBadRequest, e)
+						ctx.Abort()
+						return
+					}
+				} else if err := json.Unmarshal(data, &b); err != nil {
+					ctx.JSON(http.StatusBadRequest, err)
+					ctx.Abort()
+					return
+				} else {
+					paramValues = append(paramValues, b)
+				}
+			}
+		}
+		if result, err := paramFunc(paramValues...); err != nil {
+			ctx.JSON(http.StatusBadRequest, err)
+		} else {
+			ctx.JSONoK(result)
+		}
+	}
+}
+
+func (e *engine) GetWithParam(pattern string, paramFunc HandlerParamFunc, params ...HandlerParam) {
+	e.Get(pattern, handlerParam2Fun(paramFunc, params...))
+}
+
+func (e *engine) PostWithParam(pattern string, paramFunc HandlerParamFunc, params ...HandlerParam) {
+	e.Post(pattern, handlerParam2Fun(paramFunc, params...))
+}
+
+func (e *engine) PutWithParam(pattern string, paramFunc HandlerParamFunc, params ...HandlerParam) {
+	e.Put(pattern, handlerParam2Fun(paramFunc, params...))
+}
+
+func (e *engine) DeleteWithParam(pattern string, paramFunc HandlerParamFunc, params ...HandlerParam) {
+	e.Delete(pattern, handlerParam2Fun(paramFunc, params...))
+}
+
+func (e *engine) OptionsWithParam(pattern string, paramFunc HandlerParamFunc, params ...HandlerParam) {
+	e.Options(pattern, handlerParam2Fun(paramFunc, params...))
+}
+
+func (e *engine) HeadWithParam(pattern string, paramFunc HandlerParamFunc, params ...HandlerParam) {
+	e.Head(pattern, handlerParam2Fun(paramFunc, params...))
+}
+
+func (e *engine) AnyWithParam(pattern string, paramFunc HandlerParamFunc, params ...HandlerParam) {
+	e.Any(pattern, handlerParam2Fun(paramFunc, params...))
 }
 
 //Get 注册路由规则及执行方法

@@ -33,6 +33,56 @@ type Params struct {
 
 type HandlerFunc func(ctx *Context)
 
+type HandlerParamFunc func(params ...HandlerParam) (any, error)
+
+type HandlerParam interface {
+	Name() string
+	Required() bool
+	Value() any
+}
+
+type QueryParam struct {
+	name     string
+	value    any
+	required bool `json:"required,omitempty"`
+}
+
+func NewQuery(name string, required bool) QueryParam {
+	return QueryParam{
+		name:     name,
+		required: required,
+	}
+}
+
+func (p QueryParam) Name() string {
+	return p.name
+}
+
+func (p QueryParam) Value() any {
+	return p.value
+}
+
+func (p QueryParam) Required() bool {
+	return p.required
+}
+
+type BodyParam struct {
+	Body     any
+	required bool `json:"required,omitempty"`
+}
+
+func (b BodyParam) Name() string {
+	return "body"
+}
+
+func (b BodyParam) Required() bool {
+	return b.required
+}
+
+func (b BodyParam) Value() any {
+	return b.Body
+}
+
 type HandlersChain []HandlerFunc
 
 type Context struct {
@@ -552,8 +602,10 @@ func (c *Context) JSON(code int, obj any) {
 	c.Status(code)
 	if r, ok := obj.(Result); ok {
 		obj = r
-	} else if e, ok1 := obj.(error); ok1 {
+	} else if e, ok1 := obj.(BusinessError); ok1 {
 		obj = e
+	} else if e2, ok2 := obj.(error); ok2 {
+		obj = BusinessError{20500, "服务端异常", e2.Error()}
 	} else {
 		obj = Result{0, "成功", obj}
 	}

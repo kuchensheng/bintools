@@ -2,6 +2,8 @@ package http
 
 import (
 	"encoding/json"
+	"fmt"
+	"github.com/kuchensheng/bintools/logger"
 	"io/ioutil"
 	"net/http"
 	"runtime"
@@ -192,4 +194,17 @@ func BenchmarkEngine_Get(b *testing.B) {
 		}(i)
 	}
 	wg.Wait()
+}
+
+func TestEngine_AnyWithParam(t *testing.T) {
+	e := Default()
+	e.GetWithParam("/api/test/param", func(params ...HandlerParam) (any, error) {
+		msg := fmt.Sprintf("param name = %s,value = %s", params[0].Name(), params[0].Value())
+		logger.GlobalLogger.Info(msg)
+		return msg, nil
+	}, NewQuery("name", false), QueryParam{"age", 0, true}, BodyParam{struct {
+		Class string
+	}{""}, false})
+	//e.AnyWithParam("/api/test/param", QueryParam{""}, QueryParam{0}, RequestBody{[]string{}})
+	e.Run(8080)
 }

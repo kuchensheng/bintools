@@ -9,8 +9,9 @@ type BusinessError struct {
 }
 
 var (
-	UNKNOWN   = BusinessError{20000, "未知异常", nil}
-	SERVERERR = BusinessError{20500, "服务端异常", nil}
+	UNKNOWN    = BusinessError{20000, "未知异常", nil}
+	SERVERERR  = BusinessError{20500, "服务端异常", nil}
+	BADREQUEST = BusinessError{20400, "参数不正确", nil}
 )
 
 func NewError(data any) BusinessError {
