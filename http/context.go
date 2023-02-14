@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/kuchensheng/bintools/http/util"
+	"github.com/kuchensheng/bintools/logger"
 	"gopkg.in/yaml.v3"
 	"io"
 	"io/ioutil"
@@ -31,6 +32,56 @@ type Params struct {
 }
 
 type HandlerFunc func(ctx *Context)
+
+type HandlerParamFunc func(params ...HandlerParam) (any, error)
+
+type HandlerParam interface {
+	Name() string
+	Required() bool
+	Value() any
+}
+
+type QueryParam struct {
+	name     string
+	value    any
+	required bool `json:"required,omitempty"`
+}
+
+func NewQuery(name string, required bool) QueryParam {
+	return QueryParam{
+		name:     name,
+		required: required,
+	}
+}
+
+func (p QueryParam) Name() string {
+	return p.name
+}
+
+func (p QueryParam) Value() any {
+	return p.value
+}
+
+func (p QueryParam) Required() bool {
+	return p.required
+}
+
+type BodyParam struct {
+	Body     any
+	required bool `json:"required,omitempty"`
+}
+
+func (b BodyParam) Name() string {
+	return "body"
+}
+
+func (b BodyParam) Required() bool {
+	return b.required
+}
+
+func (b BodyParam) Value() any {
+	return b.Body
+}
 
 type HandlersChain []HandlerFunc
 
@@ -63,6 +114,7 @@ type Context struct {
 // It executes the pending handlers in the chain inside the calling handler.
 // See example in GitHub.
 func (c *Context) Next() {
+	runtime.StartTrace()
 	c.index++
 	for c.index < int8(len(c.handlers)) {
 		c.handlers[c.index](c)
@@ -492,6 +544,20 @@ func (c *Context) Cookie(name string) (string, error) {
 	return val, nil
 }
 
+func (c *Context) SetHeader(key string, value string) {
+	header := c.Request.Header
+	if header == nil {
+		header = make(map[string][]string)
+		c.Request.Header = header
+	}
+	c.Request.Header.Set(key, value)
+}
+
+// GetHeader returns value from request headers.
+func (c *Context) GetHeader(key string) string {
+	return c.Request.Header.Get(key)
+}
+
 // Deadline always returns that there is no deadline (ok==false),
 // maybe you want to use Request.Context().Deadline() instead.
 func (c *Context) Deadline() (deadline time.Time, ok bool) {
@@ -502,6 +568,7 @@ func (c *Context) Deadline() (deadline time.Time, ok bool) {
 // if you want to abort your work when the connection was closed
 // you should use Request.Context().Done() instead.
 func (c *Context) Done() <-chan struct{} {
+	c.Request.Context().Done()
 	return nil
 }
 
@@ -533,10 +600,23 @@ func (c *Context) Status(code int) {
 // It also sets the Content-Type as "application/json".
 func (c *Context) JSON(code int, obj any) {
 	c.Status(code)
+	if r, ok := obj.(Result); ok {
+		obj = r
+	} else if e, ok1 := obj.(BusinessError); ok1 {
+		obj = e
+	} else if e2, ok2 := obj.(error); ok2 {
+		obj = BusinessError{20500, "服务端异常", e2.Error()}
+	} else {
+		obj = Result{0, "成功", obj}
+	}
 	marshal, _ := json.Marshal(obj)
 	header := c.Writer.Header()
 	header["Content-Type"] = []string{"application/json"}
 	c.Writer.Write(marshal)
+}
+
+func (c *Context) JSONoK(obj any) {
+	c.JSON(http.StatusOK, Result{0, "成功", obj})
 }
 
 // YAML serializes the given struct as YAML into the response body.
@@ -568,7 +648,21 @@ func (c *Context) Recovery() {
 	if x := recover(); x != nil {
 		msg := fmt.Sprintf("%s", x)
 		log.Println(trace(msg))
+		c.JSON(http.StatusInternalServerError, NewError(x))
+		c.Abort()
 	}
+}
+
+func (c *Context) Logger() logger.Logger {
+	l := logger.GlobalLogger.SimpleWriter()
+	v, ok := c.Get(LoggerKey)
+	if !ok {
+		return l
+	}
+	if log, r := v.(logger.Logger); r {
+		l = log
+	}
+	return l
 }
 
 func trace(msg string) string {

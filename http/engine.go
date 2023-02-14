@@ -2,11 +2,14 @@ package http
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"github.com/kuchensheng/bintools/logger"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"path"
 	"strings"
 	"sync"
 	"syscall"
@@ -20,22 +23,107 @@ type engine struct {
 	pool sync.Pool
 	//路由规则前缀树
 	routes *trie
+
+	RpcServer bool
+
+	pprof bool
 }
 
 func Default() *engine {
-	return &engine{
-		handlers: HandlersChain{},
+	e := &engine{
+		//handlers: HandlersChain{LoggerMiddleWare, GrpcContext},
 		pool: sync.Pool{
 			New: func() any {
 				return &Context{}
 			},
 		},
 		routes: NewTrie(),
+		pprof:  false,
 	}
+	e.Use(LoggerMiddleWare, GrpcContext)
+	return e
+}
+
+func (e *engine) Pprof(open bool) {
+	e.pprof = open
 }
 
 func (e *engine) Use(middlewares ...HandlerFunc) {
 	e.handlers = append(e.handlers, middlewares...)
+}
+
+func handlerParam2Fun(paramFunc HandlerParamFunc, params ...HandlerParam) func(ctx *Context) {
+	return func(ctx *Context) {
+		log := ctx.Logger()
+		var paramValues []HandlerParam
+		for _, param := range params {
+			if q, ok := param.(QueryParam); ok {
+				if v, find := ctx.GetQuery(q.Name()); !find && q.Required() {
+					log.Info("缺少请求参数：%s", q.Name())
+					e := BADREQUEST
+					e.Data = "缺少请求参数:" + q.Name()
+					ctx.JSON(http.StatusBadRequest, e)
+					ctx.Next()
+					return
+				} else {
+					q.value = v
+					paramValues = append(paramValues, q)
+				}
+			} else if b, ok := param.(BodyParam); ok {
+				data, _ := ctx.GetRawDataNoClose()
+				body := b.Body
+				if len(data) == 0 {
+					if b.Required() || ctx.Request.Method == http.MethodPost || ctx.Request.Method == http.MethodPut {
+						e := BADREQUEST
+						e.Data = "请求体不能为空"
+						ctx.JSON(http.StatusBadRequest, e)
+						ctx.Abort()
+						return
+					}
+				} else if err := json.Unmarshal(data, &body); err != nil {
+					ctx.JSON(http.StatusBadRequest, err)
+					ctx.Abort()
+					return
+				} else {
+					b.Body = body
+					paramValues = append(paramValues, b)
+				}
+			}
+		}
+		if result, err := paramFunc(paramValues...); err != nil {
+			ctx.JSON(http.StatusBadRequest, err)
+		} else {
+			ctx.JSONoK(result)
+		}
+	}
+}
+
+func (e *engine) GetWithParam(pattern string, paramFunc HandlerParamFunc, params ...HandlerParam) {
+	e.Get(pattern, handlerParam2Fun(paramFunc, params...))
+}
+
+func (e *engine) PostWithParam(pattern string, paramFunc HandlerParamFunc, params ...HandlerParam) {
+	e.Post(pattern, handlerParam2Fun(paramFunc, params...))
+}
+
+func (e *engine) PutWithParam(pattern string, paramFunc HandlerParamFunc, params ...HandlerParam) {
+	e.Put(pattern, handlerParam2Fun(paramFunc, params...))
+}
+
+func (e *engine) DeleteWithParam(pattern string, paramFunc HandlerParamFunc, params ...HandlerParam) {
+	e.Delete(pattern, handlerParam2Fun(paramFunc, params...))
+}
+
+func (e *engine) OptionsWithParam(pattern string, paramFunc HandlerParamFunc, params ...HandlerParam) {
+	e.Options(pattern, handlerParam2Fun(paramFunc, params...))
+}
+
+func (e *engine) HeadWithParam(pattern string, paramFunc HandlerParamFunc, params ...HandlerParam) {
+	e.Head(pattern, handlerParam2Fun(paramFunc, params...))
+}
+
+func (e *engine) AnyWithParam(pattern string, paramFunc HandlerParamFunc, params ...HandlerParam) {
+	e.Any(pattern, handlerParam2Fun(paramFunc, params...))
 }
 
 //Get 注册路由规则及执行方法
@@ -67,6 +155,40 @@ func (e *engine) Any(pattern string, handlers ...HandlerFunc) {
 	e.registerRouter(http.MethodHead, pattern, handlers...)
 }
 
+func (e *engine) Static(relativePath, root string) {
+	e.StaticFS(relativePath, Dir(root, true))
+}
+
+func (e *engine) StaticFS(relativePath string, fs http.FileSystem) {
+	if strings.Contains(relativePath, ":") || strings.Contains(relativePath, "*") {
+		panic("URL parameters can not be used when serving a static folder")
+	}
+	//创建handler
+	handler := func(r string, f http.FileSystem) HandlerFunc {
+		fileServer := http.StripPrefix("/", http.FileServer(fs))
+		return func(ctx *Context) {
+			if _, noListing := fs.(*onlyFilesFS); noListing {
+				ctx.Writer.WriteHeader(http.StatusNotFound)
+			}
+			filepath, _ := ctx.GetPath("filepath")
+			if file, err := fs.Open(filepath); err != nil {
+				ctx.Writer.WriteHeader(http.StatusNotFound)
+				ctx.Abort()
+				return
+			} else {
+				file.Close()
+				fileServer.ServeHTTP(ctx.Writer, ctx.Request)
+			}
+
+		}
+	}(relativePath, fs)
+
+	urlPattern := path.Join(relativePath, "/*filepath")
+
+	e.registerRouter(http.MethodGet, urlPattern, handler)
+	e.registerRouter(http.MethodHead, urlPattern, handler)
+}
+
 func (e *engine) registerRouter(method, pattern string, handlers ...HandlerFunc) {
 	p := pattern
 	if !strings.HasPrefix(p, SEP) {
@@ -78,18 +200,26 @@ func (e *engine) registerRouter(method, pattern string, handlers ...HandlerFunc)
 		Path:    pattern,
 		Handler: append(e.handlers, handlers...),
 	})
+	logger.GlobalLogger.Info("注册路由规则:Method [%s],Pattern [%s]", method, pattern)
 }
 
 func (e *engine) Run(port int) {
+	if e.pprof {
+		e.pprofRouteRegister()
+	}
+	e.RunRpc(port + 1)
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", port),
 		Handler: e,
 	}
+	l := logger.GlobalLogger
+
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("unable to start server due to: %v", err)
+			l.FatalLevel(fmt.Sprintf("unable to start server due to: %v", err))
 		}
 	}()
+	l.Info("服务启动完成，使用端口号:%d", port)
 	//优雅停机
 	quit := make(chan os.Signal)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGKILL, syscall.SIGILL, syscall.SIGABRT, syscall.SIGSEGV)
