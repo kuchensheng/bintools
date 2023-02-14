@@ -196,7 +196,7 @@ func BenchmarkEngine_Get(b *testing.B) {
 	wg.Wait()
 }
 
-func TestEngine_AnyWithParam(t *testing.T) {
+func TestEngine_GetWithParam(t *testing.T) {
 	e := Default()
 	e.GetWithParam("/api/test/param", func(params ...HandlerParam) (any, error) {
 		msg := fmt.Sprintf("param name = %s,value = %s", params[0].Name(), params[0].Value())
@@ -206,5 +206,31 @@ func TestEngine_AnyWithParam(t *testing.T) {
 		Class string
 	}{""}, false})
 	//e.AnyWithParam("/api/test/param", QueryParam{""}, QueryParam{0}, RequestBody{[]string{}})
+	e.Run(8080)
+}
+
+type myBody struct {
+	Name  string   `json:"name"`
+	Age   int      `json:"age"`
+	Datas []string `json:"datas"`
+}
+
+func TestEngine_PostWithParam(t *testing.T) {
+	e := Default()
+	e.PostWithParam("/api/test/param", func(params ...HandlerParam) (any, error) {
+		return fmt.Sprintf("%+v", params), nil
+	}, NewQuery("name", false), BodyParam{
+		myBody{}, true,
+	})
+	e.Run(8080)
+}
+
+func TestEngine_Delete(t *testing.T) {
+	e := Default()
+	e.DeleteWithParam("/api/test/param", func(params ...HandlerParam) (any, error) {
+		return fmt.Sprintf("%+v", params), nil
+	}, NewQuery("name", false), BodyParam{
+		myBody{}, true,
+	})
 	e.Run(8080)
 }

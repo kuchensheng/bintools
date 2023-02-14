@@ -19,5 +19,6 @@ var LoggerMiddleWare = func(ctx *Context) {
 	}
 	l = l.TraceId(traceId)
 	ctx.Set(LoggerKey, l)
+	l.Info("收到请求:[%s]%s", ctx.Request.Method, ctx.Request.URL.Path)
 	ctx.Next()
 }

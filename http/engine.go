@@ -71,6 +71,7 @@ func handlerParam2Fun(paramFunc HandlerParamFunc, params ...HandlerParam) func(c
 				}
 			} else if b, ok := param.(BodyParam); ok {
 				data, _ := ctx.GetRawDataNoClose()
+				body := b.Body
 				if len(data) == 0 {
 					if b.Required() || ctx.Request.Method == http.MethodPost || ctx.Request.Method == http.MethodPut {
 						e := BADREQUEST
@@ -79,11 +80,12 @@ func handlerParam2Fun(paramFunc HandlerParamFunc, params ...HandlerParam) func(c
 						ctx.Abort()
 						return
 					}
-				} else if err := json.Unmarshal(data, &b); err != nil {
+				} else if err := json.Unmarshal(data, &body); err != nil {
 					ctx.JSON(http.StatusBadRequest, err)
 					ctx.Abort()
 					return
 				} else {
+					b.Body = body
 					paramValues = append(paramValues, b)
 				}
 			}
@@ -210,11 +212,14 @@ func (e *engine) Run(port int) {
 		Addr:    fmt.Sprintf(":%d", port),
 		Handler: e,
 	}
+	l := logger.GlobalLogger
+
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("unable to start server due to: %v", err)
+			l.FatalLevel(fmt.Sprintf("unable to start server due to: %v", err))
 		}
 	}()
+	l.Info("服务启动完成，使用端口号:%d", port)
 	//优雅停机
 	quit := make(chan os.Signal)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGKILL, syscall.SIGILL, syscall.SIGABRT, syscall.SIGSEGV)
