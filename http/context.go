@@ -117,7 +117,6 @@ func (c *Context) Next() {
 	c.index++
 	if c.index < int8(len(c.handlers)) {
 		c.handlers[c.index](c)
-		c.index++
 	}
 }
 
