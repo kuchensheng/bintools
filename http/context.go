@@ -115,7 +115,7 @@ type Context struct {
 // See example in GitHub.
 func (c *Context) Next() {
 	c.index++
-	for c.index < int8(len(c.handlers)) {
+	if c.index < int8(len(c.handlers)) {
 		c.handlers[c.index](c)
 		c.index++
 	}

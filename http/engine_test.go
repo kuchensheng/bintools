@@ -158,6 +158,10 @@ func TestEngine_GetWithUse(t *testing.T) {
 		ctx.Next()
 		name := ctx.GetString("name")
 		t.Logf("name = %s", name)
+	}, func(ctx *Context) {
+		t.Logf("你好好:%s", "csd")
+		ctx.Next()
+		t.Log("我要稍后执行")
 	})
 	e.Get("/api/test", func(ctx *Context) {
 		a, _ := ctx.GetQuery("a")
