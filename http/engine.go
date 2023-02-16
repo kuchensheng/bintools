@@ -275,7 +275,7 @@ func (c *Context) reset() {
 func handle(chain HandlersChain, ctx *Context) {
 	ctx.handlers[ctx.index](ctx)
 	//最后一个必须得执行
-	if ctx.index <= int8(len(ctx.handlers)-1) {
+	if ctx.index < int8(len(ctx.handlers)-1) {
 		handle(chain[ctx.index+1:], ctx)
 	}
 }
