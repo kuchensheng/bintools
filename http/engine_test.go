@@ -151,7 +151,7 @@ func TestEngine_PostRawData(t *testing.T) {
 
 func TestEngine_GetWithUse(t *testing.T) {
 	e := Default()
-	e.Pprof(true)
+	//e.Pprof(true)
 	e.Use(func(ctx *Context) {
 		t.Logf("my = %s", "库陈胜")
 		ctx.Set("my", "库陈胜")

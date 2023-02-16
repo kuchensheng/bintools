@@ -114,6 +114,7 @@ type Context struct {
 // It executes the pending handlers in the chain inside the calling handler.
 // See example in GitHub.
 func (c *Context) Next() {
+	c.index++
 	for c.index < int8(len(c.handlers)) {
 		c.handlers[c.index](c)
 		c.index++
