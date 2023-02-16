@@ -60,7 +60,7 @@ func (l Logger) Debug(format string, args ...any) {
 	}
 }
 
-func (l *Logger) Info(format string, args ...any) {
+func (l Logger) Info(format string, args ...any) {
 	if l.enabled(InfoLevel) {
 		msg := l.msg(InfoLevel, format, args...)
 		_ = l.WriteLevel(InfoLevel, msg)
