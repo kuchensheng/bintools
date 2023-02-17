@@ -195,7 +195,7 @@ func (e *engine) registerRouter(method, pattern string, handlers ...HandlerFunc)
 		p = SEP + p
 	}
 	p = method + p
-	var h HandlersChain
+	h := make(HandlersChain, len(e.handlers))
 	_ = copy(h, e.handlers)
 	h = append(h, handlers...)
 	r := &Route{method, pattern, h}
