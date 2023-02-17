@@ -85,6 +85,10 @@ func (l Logger) Error(format string, args ...any) {
 	}
 }
 
+func (l Logger) Panicf(format string, args ...any) {
+	l.Panic(fmt.Sprintf(format, args...))
+}
+
 func (l Logger) Panic(info any) {
 	msg := ""
 	if v, ok := info.(error); ok {
@@ -96,7 +100,11 @@ func (l Logger) Panic(info any) {
 	panic(info)
 }
 
-func (l Logger) FatalLevel(info any) {
+func (l Logger) Fatalf(formt string, args ...any) {
+	l.Fatal(fmt.Sprintf(formt, args...))
+}
+
+func (l Logger) Fatal(info any) {
 	msg := ""
 	if v, ok := info.(error); ok {
 		msg = v.Error()

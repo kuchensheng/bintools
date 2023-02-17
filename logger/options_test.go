@@ -99,7 +99,7 @@ func TestLogger_FatalLevel(t *testing.T) {
 			t.Errorf("%v", x)
 		}
 	}()
-	logger.FatalLevel("啊哈")
+	logger.Fatal("啊哈")
 	t.Logf("你好：%s", "我执行了吗？")
 }
 
