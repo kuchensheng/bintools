@@ -88,6 +88,7 @@ type Logger struct {
 	spec        string
 	splitSize   int64
 	logHome     string
+	stack       bool
 }
 
 var GlobalLogger = New().SimpleWriter()
@@ -212,9 +213,8 @@ func (l Logger) SimpleWriter() Logger {
 	return l
 }
 
-func (l Logger) Level(level Level) Logger {
+func (l *Logger) Level(level Level) {
 	l.level = level
-	return l
 }
 
 func (l *Logger) Dict(key string, value any) {
