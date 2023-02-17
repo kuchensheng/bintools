@@ -8,7 +8,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/kuchensheng/bintools/http/util"
 	"github.com/kuchensheng/bintools/logger"
-	"gopkg.in/yaml.v3"
 	"io"
 	"io/ioutil"
 	"log"
@@ -115,8 +114,9 @@ type Context struct {
 // See example in GitHub.
 func (c *Context) Next() {
 	c.index++
-	if c.index < int8(len(c.handlers)) {
+	for c.index < int8(len(c.handlers)) {
 		c.handlers[c.index](c)
+		c.index++
 	}
 }
 
