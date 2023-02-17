@@ -43,14 +43,14 @@ func NewTrie() *trie {
       - /other -> Route{}
     - /test -> Route{}
 */
-func (t *trie) Insert(word string, route Route) {
+func (t *trie) Insert(word string, route *Route) {
 	if !strings.Contains(word, "*") && !strings.Contains(word, ":") {
 		newT := new(trie)
 		newT.next = make(map[string]*trie)
 		newT.isWord = false
 		t.next[word] = &trie{
 			isWord: false,
-			target: &route,
+			target: route,
 		}
 	}
 	items := strings.Split(word, SEP)
@@ -68,7 +68,7 @@ func (t *trie) Insert(word string, route Route) {
 		}
 
 		if index == len(items)-1 {
-			t.next[v].target = &route
+			t.next[v].target = route
 			t.next[v].isWord = true
 			//终止循环
 			break

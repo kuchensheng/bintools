@@ -197,11 +197,8 @@ func (e *engine) registerRouter(method, pattern string, handlers ...HandlerFunc)
 	p = method + p
 	var h HandlersChain
 	h = append(e.handlers, handlers...)
-	e.routes.Insert(p, Route{
-		Method:  method,
-		Path:    pattern,
-		Handler: h,
-	})
+	r := &Route{method, pattern, h}
+	e.routes.Insert(p, r)
 	logger.GlobalLogger.Info("注册路由规则:Method [%s],Pattern [%s]", method, pattern)
 }
 
