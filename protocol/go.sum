@@ -1,0 +1,7 @@
+github.com/kuchensheng/bintools/logger v0.1.1 h1:Cj6uhYj70jK1qNBN13jQbLuvj7aQOQ6I7rXbpvdMwLY=
+github.com/kuchensheng/bintools/logger v0.1.1/go.mod h1:waDyHS0bwEfW1E0W4N7N1/LBjaXrfh+CMi2RPh9RwgM=
+github.com/mattn/go-colorable v0.1.12 h1:jF+Du6AlPIjs2BiUiQlKOX0rt3SujHxPnksPKZbaA40=
+github.com/mattn/go-isatty v0.0.14 h1:yVuAays6BHfxijgZPzw+3Zlu5yQgKGP2/hcQbHb7S9Y=
+github.com/rs/zerolog v1.29.0 h1:Zes4hju04hjbvkVkOhdl2HpZa+0PmVwigmo8XoORE5w=
+golang.org/x/sys v0.6.0 h1:MVltZSvRTcU2ljQOhs94SXPftV6DCNnZViHeQps87pQ=
+golang.org/x/sys v0.6.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
