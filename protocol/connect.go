@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"github.com/kuchensheng/bintools/logger"
 	"github.com/kuchensheng/protocol/metadata"
 	"math"
@@ -32,7 +33,8 @@ type Conn struct {
 }
 
 func (c *Conn) Read() (b []byte, err error) {
-	log.Debug("读取链接的信息,meta={%v}", c.meta)
+	fmt.Sprintf("%s", "读取连接信息")
+	//log.Debug("读取链接的信息,meta={%v}", c.meta)
 	if c == nil {
 		return nil, errors.New("conn is nil")
 	}
@@ -97,4 +99,5 @@ func (c *Conn) RegisterSplitFunc() {
 		return
 	}
 	scanner.Split(splitFunc)
+	c.scan = scanner
 }
