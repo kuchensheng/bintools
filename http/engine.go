@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/kuchensheng/bintools/http/config"
+	"github.com/kuchensheng/bintools/http/config/yaml"
 	"github.com/kuchensheng/bintools/logger"
 	"log"
 	"net/http"
@@ -27,6 +29,8 @@ type engine struct {
 	RpcServer bool
 
 	pprof bool
+
+	appConfig config.IAppConfig
 }
 
 func Default() *engine {
@@ -41,6 +45,7 @@ func Default() *engine {
 		pprof:  false,
 	}
 	e.Use(LoggerMiddleWare, GrpcContext)
+	e.appConfig = yaml.InitYamlConfig()
 	return e
 }
 
@@ -126,7 +131,7 @@ func (e *engine) AnyWithParam(pattern string, paramFunc HandlerParamFunc, params
 	e.Any(pattern, handlerParam2Fun(paramFunc, params...))
 }
 
-//Get 注册路由规则及执行方法
+// Get 注册路由规则及执行方法
 func (e *engine) Get(pattern string, handlers ...HandlerFunc) {
 	e.registerRouter(http.MethodGet, pattern, handlers...)
 }
@@ -203,7 +208,11 @@ func (e *engine) registerRouter(method, pattern string, handlers ...HandlerFunc)
 	logger.GlobalLogger.Info("注册路由规则:Method [%s],Pattern [%s]", method, pattern)
 }
 
-func (e *engine) Run(port int) {
+func (e *engine) Run() {
+	e.RunWithPort(e.appConfig.GetAttr("server.port").(int))
+}
+
+func (e *engine) RunWithPort(port int) {
 	if e.pprof {
 		e.pprofRouteRegister()
 	}
