@@ -46,6 +46,7 @@ func Default() *engine {
 	}
 	e.Use(LoggerMiddleWare, GrpcContext)
 	e.appConfig = yaml.InitYamlConfig()
+	println(config.ConfigMap)
 	return e
 }
 

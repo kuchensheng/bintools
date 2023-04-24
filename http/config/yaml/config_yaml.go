@@ -35,6 +35,7 @@ func readYaml(yamlPath string) {
 	if yamlPath == "" {
 		yamlPath = defaultYamlPath
 	}
+	logger.GlobalLogger.Info("读取配置文件：%s", yamlPath)
 	file, err := os.ReadFile(yamlPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -62,7 +63,7 @@ func updateConfig(config map[string]any, oldConfigMap map[string]any) {
 			if _, is := v.(map[string]any); is {
 				updateConfig(val.(map[string]any), v.(map[string]any))
 			} else {
-				oldConfigMap[key] = v
+				oldConfigMap[key] = val
 			}
 		} else {
 			oldConfigMap[key] = val
