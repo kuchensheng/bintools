@@ -51,7 +51,7 @@ func BenchmarkLogger_Info(b *testing.B) {
 	var sw sync.WaitGroup
 	sw.Add(counter)
 	l := logger
-	l.CallerSkip(3)
+	l = l.CallerSkip(3)
 	for i := 0; i < counter; i++ {
 		go func(idx int) {
 			l.Info("%s%s,%s", "库陈胜", "帅", time.Now())
@@ -99,11 +99,18 @@ func TestLogger_FatalLevel(t *testing.T) {
 			t.Errorf("%v", x)
 		}
 	}()
-	logger.FatalLevel("啊哈")
+	logger.Fatal("啊哈")
 	t.Logf("你好：%s", "我执行了吗？")
 }
 
 func TestLogger_Dict(t *testing.T) {
 	logger.Dict("name", "kucs")
 	logger.Info("%s", "你好")
+}
+
+func TestLogger_Level(t *testing.T) {
+	t.Logf("设置日志级别,%v", ErrorLevel)
+	logger.Level(ErrorLevel)
+	logger.Info("我不会输出")
+	logger.Error("我是error，我输出")
 }

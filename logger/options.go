@@ -69,20 +69,33 @@ func (l Logger) Info(format string, args ...any) {
 
 func (l Logger) Warn(format string, args ...any) {
 	if l.enabled(WarnLevel) {
-		format += "\n%-6s"
-		args = append(args, debug.Stack())
+		if l.stack {
+			format += "\n%-6s"
+			args = append(args, debug.Stack())
+		}
 		msg := l.msg(WarnLevel, format, args...)
 		_ = l.WriteLevel(WarnLevel, msg)
 	}
 }
 
+func (l Logger) Stack() Logger {
+	l.stack = true
+	return l
+}
+
 func (l Logger) Error(format string, args ...any) {
 	if l.enabled(ErrorLevel) {
-		format += "\n%-6s"
-		args = append(args, debug.Stack())
+		if l.stack {
+			format += "\n%-6s"
+			args = append(args, debug.Stack())
+		}
 		msg := l.msg(ErrorLevel, format, args...)
 		_ = l.WriteLevel(ErrorLevel, msg)
 	}
+}
+
+func (l Logger) Panicf(format string, args ...any) {
+	l.Panic(fmt.Sprintf(format, args...))
 }
 
 func (l Logger) Panic(info any) {
@@ -96,7 +109,11 @@ func (l Logger) Panic(info any) {
 	panic(info)
 }
 
-func (l Logger) FatalLevel(info any) {
+func (l Logger) Fatalf(formt string, args ...any) {
+	l.Fatal(fmt.Sprintf(formt, args...))
+}
+
+func (l Logger) Fatal(info any) {
 	msg := ""
 	if v, ok := info.(error); ok {
 		msg = v.Error()
