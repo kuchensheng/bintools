@@ -23,7 +23,7 @@ const (
 	WarnLevel
 	ErrorLevel
 	PanicLevel
-	FatalLevel
+	Fatalf
 	NoLevel
 	Disabled
 )
@@ -42,7 +42,7 @@ func (lvl Level) GetName() string {
 		return "error"
 	case PanicLevel:
 		return "panic"
-	case FatalLevel:
+	case Fatalf:
 		return "fatal"
 	default:
 		return ""
@@ -208,7 +208,7 @@ func (l Logger) SimpleWriter() Logger {
 	}
 
 	logWriters = append(logWriters, l.NewFileLevelWriter(PanicLevel))
-	logWriters = append(logWriters, l.NewFileLevelWriter(FatalLevel))
+	logWriters = append(logWriters, l.NewFileLevelWriter(Fatalf))
 	l.writer.writers = logWriters
 	return l
 }

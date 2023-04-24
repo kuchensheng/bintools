@@ -27,7 +27,7 @@ func (t *Arith) Add(args Args, reply *Reply) error {
 func TestRegister(t *testing.T) {
 	e := Default()
 	e.Register("Arith", new(Arith))
-	e.Run(8080)
+	e.RunWithPort(8080)
 }
 
 func TestRpcClient(t *testing.T) {

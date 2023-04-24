@@ -120,6 +120,6 @@ func (l Logger) Fatal(info any) {
 	} else {
 		msg = fmt.Sprintf("%v", info)
 	}
-	_ = l.WriteLevel(FatalLevel, msg)
+	_ = l.WriteLevel(Fatalf, msg)
 	os.Exit(0)
 }

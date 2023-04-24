@@ -225,7 +225,7 @@ func (e *engine) RunWithPort(port int) {
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			l.FatalLevel(fmt.Sprintf("unable to start server due to: %v", err))
+			l.Fatalf(fmt.Sprintf("unable to start server due to: %v", err))
 		}
 	}()
 	l.Info("服务启动完成，使用端口号:%d", port)

@@ -37,12 +37,16 @@ func readYaml(yamlPath string) {
 	}
 	file, err := os.ReadFile(yamlPath)
 	if err != nil {
-		logger.GlobalLogger.FatalLevel(fmt.Sprintf("无法读取配置文件,%v", err))
+		if os.IsNotExist(err) {
+			logger.GlobalLogger.Warn("文件不存在:%s", yamlPath)
+			return
+		}
+		logger.GlobalLogger.Fatalf(fmt.Sprintf("无法读取配置文件,%v", err))
 	}
 	config := make(map[string]any)
 	err = yaml.Unmarshal(file, &config)
 	if err != nil {
-		logger.GlobalLogger.FatalLevel(fmt.Sprintf("无法解析配置文件,%v", err))
+		logger.GlobalLogger.Fatalf(fmt.Sprintf("无法解析配置文件,%v", err))
 	}
 	if config2.ConfigMap == nil {
 		config2.ConfigMap = config

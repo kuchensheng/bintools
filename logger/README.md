@@ -46,7 +46,7 @@ func main() {
 
 ## 支持以下日志级别
 + panic (logger.PanicLevel)
-+ fatal (logger.FatalLevel)
++ fatal (logger.Fatalf)
 + error (logger.ErrorLevel)
 + warn (logger.WarnLevel)
 + info (logger.InfoLevel)
