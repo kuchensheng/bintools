@@ -117,7 +117,7 @@ func TestEngine_Get(t *testing.T) {
 		})
 	})
 
-	e.Run(8080)
+	e.RunWithPort(8080)
 }
 
 func TestEngine_PostForm(t *testing.T) {
@@ -126,7 +126,7 @@ func TestEngine_PostForm(t *testing.T) {
 		form := ctx.PostForm("name")
 		ctx.JSONoK(Result{0, "成功", form})
 	})
-	e.Run(8080)
+	e.RunWithPort(8080)
 }
 
 func TestEngine_PostFormFile(t *testing.T) {
@@ -135,7 +135,7 @@ func TestEngine_PostFormFile(t *testing.T) {
 		form, _ := ctx.FormFile("file")
 		ctx.JSONoK(Result{0, "成功", form})
 	})
-	e.Run(8080)
+	e.RunWithPort(8080)
 }
 
 func TestEngine_PostRawData(t *testing.T) {
@@ -146,7 +146,7 @@ func TestEngine_PostRawData(t *testing.T) {
 		json.Unmarshal(data, &a)
 		ctx.JSONoK(Result{0, "成功", a})
 	})
-	e.Run(8080)
+	e.RunWithPort(8080)
 }
 
 func TestEngine_GetWithUse(t *testing.T) {
@@ -178,7 +178,7 @@ func TestEngine_GetWithUse(t *testing.T) {
 			}{"嘿嘿", []int{1, 2, 3}},
 		})
 	})
-	e.Run(8080)
+	e.RunWithPort(8080)
 }
 
 func BenchmarkEngine_Get(b *testing.B) {
@@ -210,7 +210,7 @@ func TestEngine_GetWithParam(t *testing.T) {
 		Class string
 	}{""}, false})
 	//e.AnyWithParam("/api/test/param", QueryParam{""}, QueryParam{0}, RequestBody{[]string{}})
-	e.Run(8080)
+	e.RunWithPort(8080)
 }
 
 type myBody struct {
@@ -226,7 +226,7 @@ func TestEngine_PostWithParam(t *testing.T) {
 	}, NewQuery("name", false), BodyParam{
 		myBody{}, true,
 	})
-	e.Run(8080)
+	e.RunWithPort(8080)
 }
 
 func TestEngine_Delete(t *testing.T) {
@@ -236,5 +236,5 @@ func TestEngine_Delete(t *testing.T) {
 	}, NewQuery("name", false), BodyParam{
 		myBody{}, true,
 	})
-	e.Run(8080)
+	e.RunWithPort(8080)
 }
