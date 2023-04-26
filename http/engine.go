@@ -2,7 +2,6 @@ package http
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/kuchensheng/bintools/http/config"
 	"github.com/kuchensheng/bintools/http/config/yaml"
@@ -12,6 +11,7 @@ import (
 	"os"
 	"os/signal"
 	"path"
+	"reflect"
 	"strings"
 	"sync"
 	"syscall"
@@ -56,80 +56,6 @@ func (e *engine) Pprof(open bool) {
 
 func (e *engine) Use(middlewares ...HandlerFunc) {
 	e.handlers = append(e.handlers, middlewares...)
-}
-
-func handlerParam2Fun(paramFunc HandlerParamFunc, params ...HandlerParam) func(ctx *Context) {
-	return func(ctx *Context) {
-		log := ctx.Logger()
-		var paramValues []HandlerParam
-		for _, param := range params {
-			if q, ok := param.(QueryParam); ok {
-				if v, find := ctx.GetQuery(q.Name()); !find && q.Required() {
-					log.Info("缺少请求参数：%s", q.Name())
-					e := BADREQUEST
-					e.Data = "缺少请求参数:" + q.Name()
-					ctx.JSON(http.StatusBadRequest, e)
-					ctx.Next()
-					return
-				} else {
-					q.value = v
-					paramValues = append(paramValues, q)
-				}
-			} else if b, ok := param.(BodyParam); ok {
-				data, _ := ctx.GetRawDataNoClose()
-				body := b.Body
-				if len(data) == 0 {
-					if b.Required() || ctx.Request.Method == http.MethodPost || ctx.Request.Method == http.MethodPut {
-						e := BADREQUEST
-						e.Data = "请求体不能为空"
-						ctx.JSON(http.StatusBadRequest, e)
-						ctx.Abort()
-						return
-					}
-				} else if err := json.Unmarshal(data, &body); err != nil {
-					ctx.JSON(http.StatusBadRequest, err)
-					ctx.Abort()
-					return
-				} else {
-					b.Body = body
-					paramValues = append(paramValues, b)
-				}
-			}
-		}
-		if result, err := paramFunc(paramValues...); err != nil {
-			ctx.JSON(http.StatusBadRequest, err)
-		} else {
-			ctx.JSONoK(result)
-		}
-	}
-}
-
-func (e *engine) GetWithParam(pattern string, paramFunc HandlerParamFunc, params ...HandlerParam) {
-	e.Get(pattern, handlerParam2Fun(paramFunc, params...))
-}
-
-func (e *engine) PostWithParam(pattern string, paramFunc HandlerParamFunc, params ...HandlerParam) {
-	e.Post(pattern, handlerParam2Fun(paramFunc, params...))
-}
-
-func (e *engine) PutWithParam(pattern string, paramFunc HandlerParamFunc, params ...HandlerParam) {
-	e.Put(pattern, handlerParam2Fun(paramFunc, params...))
-}
-
-func (e *engine) DeleteWithParam(pattern string, paramFunc HandlerParamFunc, params ...HandlerParam) {
-	e.Delete(pattern, handlerParam2Fun(paramFunc, params...))
-}
-
-func (e *engine) OptionsWithParam(pattern string, paramFunc HandlerParamFunc, params ...HandlerParam) {
-	e.Options(pattern, handlerParam2Fun(paramFunc, params...))
-}
-
-func (e *engine) HeadWithParam(pattern string, paramFunc HandlerParamFunc, params ...HandlerParam) {
-	e.Head(pattern, handlerParam2Fun(paramFunc, params...))
-}
-
-func (e *engine) AnyWithParam(pattern string, paramFunc HandlerParamFunc, params ...HandlerParam) {
-	e.Any(pattern, handlerParam2Fun(paramFunc, params...))
 }
 
 // Get 注册路由规则及执行方法
@@ -204,7 +130,24 @@ func (e *engine) registerRouter(method, pattern string, handlers ...HandlerFunc)
 	h := make(HandlersChain, len(e.handlers))
 	_ = copy(h, e.handlers)
 	h = append(h, handlers...)
-	r := &Route{method, pattern, h}
+	r := &Route{method, pattern, h, nil, nil}
+	e.routes.Insert(p, r)
+	logger.GlobalLogger.Info("注册路由规则:Method [%s],Pattern [%s]", method, pattern)
+}
+
+func (e *engine) registerRouterWithParams(method, pattern string, handler HandlerParamFunc) {
+	p := pattern
+	if !strings.HasPrefix(p, SEP) {
+		p = SEP + p
+	}
+	p = method + p
+	h := make(HandlersChain, len(e.handlers))
+	_ = copy(h, e.handlers)
+	r := &Route{method, pattern, h, handler, func() []string {
+		var res []string
+		reflect.TypeOf(handler)
+		return res
+	}()}
 	e.routes.Insert(p, r)
 	logger.GlobalLogger.Info("注册路由规则:Method [%s],Pattern [%s]", method, pattern)
 }
@@ -268,7 +211,64 @@ func (e *engine) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	c.handlers = search.Handler
 	defer c.Recovery()
 	handle(c.handlers, c)
+	if search.ParamsHandler != nil {
+		if handler, err := search.ParamsHandler(parseParams(search, c)); err != nil {
+			c.JSON(http.StatusBadRequest, e)
+		} else {
+			c.JSON(http.StatusOK, handler)
+		}
+	}
 	defer e.pool.Put(c)
+}
+
+func parseParams(route *Route, context *Context) []HandlerParam {
+	var res []HandlerParam
+	split := strings.Split(route.Path, "/:")
+	if len(split) == 1 {
+		split = strings.Split(route.Path, "/{")
+	}
+	if len(split) == 1 {
+		//当前请求无Path参数
+	} else {
+		split = strings.Split(split[1], "/")
+		pathKey := split[0]
+		//获取pathKey所在idx
+		for idx, s := range strings.Split(route.Path, "/") {
+			if s == pathKey {
+				pathVal := strings.Split(context.Request.RequestURI, "/")[idx]
+				res = append(res, PathParam{name: pathKey, value: pathVal})
+				break
+			}
+		}
+	}
+
+	//查询请求头
+	for s, vals := range context.Request.Header {
+		res = append(res, HeaderParam{name: s, value: vals[0]})
+	}
+	//查询query参数
+	for key, values := range context.Request.URL.Query() {
+		res = append(res, QueryParam{name: key, value: values[0]})
+	}
+	//查询Body参数
+	if data, err := context.GetRawData(); err == nil {
+		res = append(res, BodyParam{Body: data})
+	}
+	//查询表单参数
+	if context.GetHeader("Content-Type") == "application/x-www-form-urlencoded" {
+		if context.Request.PostForm != nil {
+			res = append(res, FormParam{Form: context.Request.PostForm})
+		} else {
+			res = append(res, FormParam{Form: context.Request.Form})
+		}
+	}
+	//查询文件表单
+	if context.GetHeader("Content-Type") == "multipart/form-data" {
+		if context.Request.MultipartForm != nil {
+			res = append(res, MultiFormParam{Form: context.Request.MultipartForm})
+		}
+	}
+	return res
 }
 
 func (c *Context) reset() {

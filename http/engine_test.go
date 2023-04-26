@@ -202,13 +202,11 @@ func BenchmarkEngine_Get(b *testing.B) {
 
 func TestEngine_GetWithParam(t *testing.T) {
 	e := Default()
-	e.GetWithParam("/api/test/param", func(params ...HandlerParam) (any, error) {
-		msg := fmt.Sprintf("param name = %s,value = %s", params[0].Name(), params[0].Value())
+	e.GetWithParam("/api/test/param", func(params []HandlerParam) (any, error) {
+		msg := fmt.Sprintf("param name = %s,value = %s", 1, 2)
 		logger.GlobalLogger.Info(msg)
-		return msg, nil
-	}, NewQuery("name", false), QueryParam{"age", 0, true}, BodyParam{struct {
-		Class string
-	}{""}, false})
+		return nil, nil
+	})
 	//e.AnyWithParam("/api/test/param", QueryParam{""}, QueryParam{0}, RequestBody{[]string{}})
 	e.RunWithPort(8080)
 }
@@ -221,20 +219,16 @@ type myBody struct {
 
 func TestEngine_PostWithParam(t *testing.T) {
 	e := Default()
-	e.PostWithParam("/api/test/param", func(params ...HandlerParam) (any, error) {
+	e.PostWithParam("/api/test/param", func(params []HandlerParam) (any, error) {
 		return fmt.Sprintf("%+v", params), nil
-	}, NewQuery("name", false), BodyParam{
-		myBody{}, true,
 	})
 	e.RunWithPort(8080)
 }
 
 func TestEngine_Delete(t *testing.T) {
 	e := Default()
-	e.DeleteWithParam("/api/test/param", func(params ...HandlerParam) (any, error) {
+	e.DeleteWithParam("/api/test/param", func(params []HandlerParam) (any, error) {
 		return fmt.Sprintf("%+v", params), nil
-	}, NewQuery("name", false), BodyParam{
-		myBody{}, true,
 	})
 	e.RunWithPort(8080)
 }

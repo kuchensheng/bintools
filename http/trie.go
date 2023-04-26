@@ -5,12 +5,14 @@ import "strings"
 const SEP = "/"
 
 type Route struct {
-	Method  string        `json:"method"`
-	Path    string        `json:"path"`
-	Handler HandlersChain `json:"handler"`
+	Method        string           `json:"method"`
+	Path          string           `json:"path"`
+	Handler       HandlersChain    `json:"handler"`
+	ParamsHandler HandlerParamFunc `json:"paramsHandler"`
+	ParamNames    []string         `json:"paramNames"`
 }
 
-//trie 前缀树，用于存储路由服务和路径的映射关系
+// trie 前缀树，用于存储路由服务和路径的映射关系
 type trie struct {
 	//next 下个节点信息
 	next map[string]*trie
@@ -25,7 +27,7 @@ type trie struct {
 	IsInitial bool
 }
 
-//NewTrie 初始化树，返回一个前缀树的指针
+// NewTrie 初始化树，返回一个前缀树的指针
 func NewTrie() *trie {
 	return &trie{
 		next:      make(map[string]*trie),
@@ -77,8 +79,8 @@ func (t *trie) Insert(word string, route *Route) {
 	}
 }
 
-//Search 前缀树查找，其时间复杂度为O(K),K=前缀长度，例如Path = /api/test/test,则前缀长度K=3
-//注意：查询时需要注意路径参数匹配
+// Search 前缀树查找，其时间复杂度为O(K),K=前缀长度，例如Path = /api/test/test,则前缀长度K=3
+// 注意：查询时需要注意路径参数匹配
 func (t trie) Search(word string) *Route {
 	if r, ok := t.next[word]; ok {
 		return r.target

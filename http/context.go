@@ -33,56 +33,6 @@ type Params struct {
 
 type HandlerFunc func(ctx *Context)
 
-type HandlerParamFunc func(params ...HandlerParam) (any, error)
-
-type HandlerParam interface {
-	Name() string
-	Required() bool
-	Value() any
-}
-
-type QueryParam struct {
-	name     string
-	value    any
-	required bool `json:"required,omitempty"`
-}
-
-func NewQuery(name string, required bool) QueryParam {
-	return QueryParam{
-		name:     name,
-		required: required,
-	}
-}
-
-func (p QueryParam) Name() string {
-	return p.name
-}
-
-func (p QueryParam) Value() any {
-	return p.value
-}
-
-func (p QueryParam) Required() bool {
-	return p.required
-}
-
-type BodyParam struct {
-	Body     any
-	required bool `json:"required,omitempty"`
-}
-
-func (b BodyParam) Name() string {
-	return "body"
-}
-
-func (b BodyParam) Required() bool {
-	return b.required
-}
-
-func (b BodyParam) Value() any {
-	return b.Body
-}
-
 type HandlersChain []HandlerFunc
 
 type Context struct {
@@ -91,8 +41,7 @@ type Context struct {
 	Request *http.Request
 
 	handlers HandlersChain
-
-	index int8
+	index    int8
 
 	// This mutex protect Keys map
 	mu sync.RWMutex
@@ -249,11 +198,12 @@ func (c *Context) GetStringMap(key string) (sm map[string]any) {
 // Query returns the keyed url query value if it exists,
 // otherwise it returns an empty string `("")`.
 // It is shortcut for `c.Request.URL.Query().Get(key)`
-//     GET /path?id=1234&name=Manu&value=
-// 	   c.Query("id") == "1234"
-// 	   c.Query("name") == "Manu"
-// 	   c.Query("value") == ""
-// 	   c.Query("wtf") == ""
+//
+//	    GET /path?id=1234&name=Manu&value=
+//		   c.Query("id") == "1234"
+//		   c.Query("name") == "Manu"
+//		   c.Query("value") == ""
+//		   c.Query("wtf") == ""
 func (c *Context) Query(key string) string {
 	value, _ := c.GetQuery(key)
 	return value
@@ -262,10 +212,11 @@ func (c *Context) Query(key string) string {
 // DefaultQuery returns the keyed url query value if it exists,
 // otherwise it returns the specified defaultValue string.
 // See: Query() and GetQuery() for further information.
-//     GET /?name=Manu&lastname=
-//     c.DefaultQuery("name", "unknown") == "Manu"
-//     c.DefaultQuery("id", "none") == "none"
-//     c.DefaultQuery("lastname", "none") == ""
+//
+//	GET /?name=Manu&lastname=
+//	c.DefaultQuery("name", "unknown") == "Manu"
+//	c.DefaultQuery("id", "none") == "none"
+//	c.DefaultQuery("lastname", "none") == ""
 func (c *Context) DefaultQuery(key, defaultValue string) string {
 	if value, ok := c.GetQuery(key); ok {
 		return value
@@ -277,10 +228,11 @@ func (c *Context) DefaultQuery(key, defaultValue string) string {
 // if it exists `(value, true)` (even when the value is an empty string),
 // otherwise it returns `("", false)`.
 // It is shortcut for `c.Request.URL.Query().Get(key)`
-//     GET /?name=Manu&lastname=
-//     ("Manu", true) == c.GetQuery("name")
-//     ("", false) == c.GetQuery("id")
-//     ("", true) == c.GetQuery("lastname")
+//
+//	GET /?name=Manu&lastname=
+//	("Manu", true) == c.GetQuery("name")
+//	("", false) == c.GetQuery("id")
+//	("", true) == c.GetQuery("lastname")
 func (c *Context) GetQuery(key string) (string, bool) {
 	if values, ok := c.GetQueryArray(key); ok {
 		return values[0], ok
@@ -346,8 +298,9 @@ func (c *Context) get(m map[string][]string, key string) (map[string]string, boo
 // GetPath ,it returns the keyed url path value
 // if it exists `(value, true)` (even when the value is an empty string),
 // otherwise it returns `("", false)`.
-//     GET /api/test/Manu and pattern is /api/test/:name
-//     ("Manu", true) == c.GetPath("name")
+//
+//	GET /api/test/Manu and pattern is /api/test/:name
+//	("Manu", true) == c.GetPath("name")
 func (c *Context) GetPath(key string) (string, bool) {
 	nameIdxMap := func(path string) map[string]int {
 		idxMap := make(map[string]int)
@@ -386,9 +339,10 @@ func (c *Context) DefaultPostForm(key, defaultValue string) string {
 // form or multipart form when it exists `(value, true)` (even when the value is an empty string),
 // otherwise it returns ("", false).
 // For example, during a PATCH request to update the user's email:
-//     email=mail@example.com  -->  ("mail@example.com", true) := GetPostForm("email") // set email to "mail@example.com"
-// 	   email=                  -->  ("", true) := GetPostForm("email") // set email to ""
-//                             -->  ("", false) := GetPostForm("email") // do nothing with email
+//
+//	    email=mail@example.com  -->  ("mail@example.com", true) := GetPostForm("email") // set email to "mail@example.com"
+//		   email=                  -->  ("", true) := GetPostForm("email") // set email to ""
+//	                            -->  ("", false) := GetPostForm("email") // do nothing with email
 func (c *Context) GetPostForm(key string) (string, bool) {
 	if values, ok := c.GetPostFormArray(key); ok {
 		return values[0], ok
