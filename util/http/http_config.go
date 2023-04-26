@@ -3,22 +3,23 @@ package http
 import (
 	"github.com/kuchensheng/bingtools/util/random"
 	"sync"
+	"time"
 )
 
 var (
-	timeout      = -1
+	timeout      = time.Duration(0)
 	bondary      = "--------------------Hutool_" + random.RandomString(16)
 	isAllowPatch = false
 	lock         sync.RWMutex
 )
 
 // GetTimeout 获取全局默认的超时时长
-func GetTimeout() int {
+func GetTimeout() time.Duration {
 	return timeout
 }
 
 // SetTimeout 设置默认的连接和读取超时时长
-func SetTimeout(customTimeout int) {
+func SetTimeout(customTimeout time.Duration) {
 	lock.Lock()
 	defer lock.Unlock()
 	timeout = customTimeout
