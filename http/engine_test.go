@@ -203,7 +203,7 @@ func BenchmarkEngine_Get(b *testing.B) {
 func TestEngine_GetWithParam(t *testing.T) {
 	e := Default()
 	e.GetWithParam("/api/test/param", func(params []HandlerParam) (any, error) {
-		msg := fmt.Sprintf("param name = %s,value = %s", 1, 2)
+		msg := fmt.Sprintf("param name = %s,value = %s,%d", "1", "2", 3)
 		logger.GlobalLogger.Info(msg)
 		return nil, nil
 	})

@@ -1,13 +1,13 @@
 package yaml
 
 import (
+	"encoding/json"
 	"fmt"
 	config2 "github.com/kuchensheng/bintools/http/config"
 	"github.com/kuchensheng/bintools/logger"
 	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 )
 
@@ -102,29 +102,8 @@ func (c *YamlConfig) FillAttr(obj any, prefix string) {
 	if len(config2.ConfigMap) == 0 {
 		readYaml(defaultYamlPath)
 	}
-	v1 := reflect.ValueOf(obj)
-	t1 := reflect.TypeOf(obj)
-	objName := t1.Name()
-	objName = strings.ToLower(objName[:1]) + objName[1:]
-	if prefix != "" {
-		prefix = prefix + config2.Concat + objName
-	} else {
-		prefix = objName
-	}
 
-	for i, n := 0, t1.NumField(); i < n; i++ {
-		field := t1.Field(i)
-		name := field.Name
-		fieldValue := v1.FieldByName(name)
-		switch fieldValue.Kind() {
-		case reflect.Struct:
-			c.FillAttr(fieldValue.Interface(), prefix)
-		default:
-			name = strings.ToLower(name[:1]) + name[1:]
-			val := getVal(prefix+config2.Concat+name, config2.ConfigMap)
-			if _, ok := val.(*map[string]any); !ok {
-				fieldValue.Elem().Set(reflect.ValueOf(val))
-			}
-		}
-	}
+	val := c.GetAttr(prefix)
+	data, _ := json.Marshal(val)
+	_ = json.Unmarshal(data, obj)
 }

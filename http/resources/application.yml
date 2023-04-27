@@ -1,6 +1,13 @@
 server:
   port: 8080
+  tracer: true
 
+trace:
+  serviceName: 1
+  loki:
+    host: 10.30.30.95:3100
+    maxBatch: 64
+    maxWaitTime: 1
 spring:
   profiles:
     active: dev

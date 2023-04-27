@@ -6,6 +6,7 @@ import (
 	"github.com/kuchensheng/bintools/http/config"
 	"github.com/kuchensheng/bintools/http/config/yaml"
 	"github.com/kuchensheng/bintools/logger"
+	"github.com/kuchensheng/bintools/tracer/conf"
 	"log"
 	"net/http"
 	"os"
@@ -47,6 +48,14 @@ func Default() *engine {
 	e.Use(LoggerMiddleWare, GrpcContext)
 	e.appConfig = yaml.InitYamlConfig()
 	println(config.ConfigMap)
+	st := e.appConfig.GetAttr("server.tracer")
+	if st != nil {
+		if v, ok := st.(bool); ok && v {
+			logger.GlobalLogger.Info("启动服务端链路跟踪")
+			e.appConfig.FillAttr(conf.Conf, "trace")
+			e.Use(TracerMiddleWare)
+		}
+	}
 	return e
 }
 
@@ -165,14 +174,13 @@ func (e *engine) RunWithPort(port int) {
 		Addr:    fmt.Sprintf(":%d", port),
 		Handler: e,
 	}
-	l := logger.GlobalLogger
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			l.Fatalf(fmt.Sprintf("unable to start server due to: %v", err))
+			logger.GlobalLogger.Fatalf(fmt.Sprintf("unable to start server due to: %v", err))
 		}
 	}()
-	l.Info("服务启动完成，使用端口号:%d", port)
+	logger.GlobalLogger.Info("服务启动完成，使用端口号:%d", port)
 	//优雅停机
 	quit := make(chan os.Signal)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGKILL, syscall.SIGILL, syscall.SIGABRT, syscall.SIGSEGV)
